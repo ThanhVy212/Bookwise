@@ -125,12 +125,6 @@
     hover:bg-primary;
   }
 
-  .form-input {
-    @apply min-h-14 w-full border-none bg-dark-300 text-base font-bold
-    text-white placeholder:font-normal placeholder:text-light-100
-    focus-visible:ring-0 focus-visible:shadow-none;
-  }
-
   /* Book Card */
   .book-title {
     @apply mt-2 line-clamp-1 text-base font-semibold text-white xs:text-xl;
@@ -350,7 +344,7 @@
   .auth-box {
     background: linear-gradient(180deg, #12141d 0%, #12151f 100%);
 
-    @apply mx-auto flex max-w-xl flex-col gap-6 rounded-lg p-10;
+    @apply mx-auto flex max-w-xl flex-col gap-6 rounded-2xl p-10;
   }
 
   .auth-illustration {
@@ -384,4 +378,49 @@
   .library-title {
     @apply mt-2 text-3xl font-semibold text-white xs:text-5xl;
   }
+}
+
+/* Unlayered form styles (override Input component utilities) */
+.form-input {
+  min-height: 3.5rem;
+  width: 100%;
+  border-radius: 0.5rem;
+  border: none;
+  background-color: white;
+  padding: 0 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #16191e;
+}
+
+.form-input::placeholder {
+  font-weight: 400;
+  color: #8d8d8d;
+}
+
+.form-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.form-label {
+  display: block;
+  padding: 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #d6e0ff;
+}
+
+.upload-btn {
+  min-height: 3.5rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  background-color: #232839;
+  padding: 0 1rem;
+  color: #d6e0ff;
+  font-size: 0.875rem;
 }

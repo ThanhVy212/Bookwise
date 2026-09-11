@@ -54,3 +54,17 @@ interface BookListProps {
   books: Book[];
   className?: string;
 }
+
+interface ImageUploadProps {
+  type: "image" | "video";
+  accept: string;
+  placeholder: string;
+  folder: string;
+  variant: "dark" | "light";
+  onFileChange: (filePath: string) => void;
+  value?: string;
+}
+
+interface UploadedFile {
+  filePath: string | null;
+}

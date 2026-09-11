@@ -380,6 +380,31 @@
   }
 }
 
+/* Upload-img-btn */
+.upload-button-dark {
+  @apply bg-dark-300;
+}
+
+.upload-button-light {
+  @apply bg-light-600 border-gray-100 border;
+}
+
+.upload-placeholder-dark {
+  @apply text-light-100;
+}
+
+.upload-placeholder-light {
+  @apply text-slate-500;
+}
+
+.upload-text-dark {
+  @apply text-light-100;
+}
+
+.upload-text-light {
+  @apply text-dark-400;
+}
+
 /* Unlayered form styles (override Input component utilities) */
 .form-input {
   min-height: 3.5rem;
@@ -401,6 +426,17 @@
 .form-input:focus-visible {
   outline: none;
   box-shadow: none;
+}
+
+/* Hide number input spinners */
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.form-input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .form-label {

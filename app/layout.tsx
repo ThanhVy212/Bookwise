@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Serif, Mona_Sans } from "next/font/google";
 
+import Providers from "@/components/Providers";
 import "./globals.css";
+import { SessionProvider } from "next-auth/react";
+import { Toaster } from "@/components/ui/toast";
+import { auth } from "@/auth";
 
 const ibmPlexSerif = IBM_Plex_Serif({
   variable: "--font-ibm-plex-serif",
@@ -21,17 +25,27 @@ export const metadata: Metadata = {
   description:
     "BookWise is a book borrowing university library management solution.",
 };
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+
   return (
     <html
       lang="en"
       className={`${ibmPlexSerif.variable} ${monaSans.variable} relative font-sans h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <SessionProvider session={session}>
+        <body className="min-h-full flex flex-col">
+          <Providers>
+            {children}
+
+            <Toaster />
+          </Providers>
+        </body>
+      </SessionProvider>
     </html>
   );
 }

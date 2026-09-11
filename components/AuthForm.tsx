@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import ImageUpload from "@/components/ImageUpload";
 import { FIELD_NAMES } from "@/constants";
 import {
   AuthFormValues,
@@ -24,6 +26,8 @@ import {
   signInSchema,
   signUpSchema,
 } from "@/lib/validations";
+import { signInWithCredentials, signUp } from "@/lib/actions/auth.actions";
+import { toast } from "@/components/ui/toast";
 
 interface AuthFormProps {
   type: "sign-in" | "sign-up";
@@ -31,21 +35,23 @@ interface AuthFormProps {
 
 const AuthForm = ({ type }: AuthFormProps) => {
   const isSignIn = type === "sign-in";
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState("");
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<AuthFormValues>({
     resolver: zodResolver(authSchema),
     defaultValues: {
       fullName: "",
       email: "",
-      universityId: "",
+      universityId: 0,
       universityCard: "",
       password: "",
     },
   });
 
   const onSubmit = async (values: AuthFormValues) => {
+    if (loading) return;
+
     const schema = isSignIn ? signInSchema : signUpSchema;
     const result = schema.safeParse(values);
 
@@ -58,7 +64,53 @@ const AuthForm = ({ type }: AuthFormProps) => {
       return;
     }
 
-    console.log(result.data);
+    setLoading(true);
+
+    const loadingToast = toast.add({
+      type: "loading",
+      title: isSignIn ? "Signing In..." : "Creating Account...",
+      description: "Please wait while we process your request.",
+    });
+
+    try {
+      const response = isSignIn
+        ? await signInWithCredentials({
+            email: result.data.email,
+            password: result.data.password,
+          })
+        : await signUp(result.data as AuthCredentials);
+
+      if (response?.success) {
+        if ("signInFailed" in response && response.signInFailed) {
+          toast.update(loadingToast, {
+            type: "success",
+            title: "Account Created!",
+            description:
+              "Your account has been created. Please sign in to continue.",
+          });
+          router.push("/sign-in");
+        } else {
+          toast.update(loadingToast, {
+            type: "success",
+            title: isSignIn ? "Welcome Back!" : "Account Created!",
+            description: isSignIn
+              ? "You have successfully signed in."
+              : "Your account has been created successfully.",
+          });
+          router.push("/");
+        }
+      } else {
+        toast.update(loadingToast, {
+          type: "error",
+          title: isSignIn ? "Sign In Failed" : "Sign Up Failed",
+          description: isSignIn
+            ? "Invalid email or password. Please try again."
+            : "Failed to create account. Please try again.",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -129,9 +181,16 @@ const AuthForm = ({ type }: AuthFormProps) => {
                   </FormLabel>
                   <FormControl>
                     <Input
+                      type="number"
+                      min="0"
                       placeholder="eg: 394365762"
                       className="form-input"
                       {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === "" ? undefined : Number(val));
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -166,42 +225,18 @@ const AuthForm = ({ type }: AuthFormProps) => {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="form-label">
-                    {FIELD_NAMES.universityCard} (file upload)
+                    {FIELD_NAMES.universityCard}
                   </FormLabel>
                   <FormControl>
-                    <div>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setFileName(file.name);
-                            field.onChange(file.name);
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="upload-btn"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Image
-                          src="/icons/upload.svg"
-                          alt="upload"
-                          width={20}
-                          height={20}
-                        />
-                        <span>Upload a file</span>
-                      </button>
-                      {fileName && (
-                        <p className="upload-filename text-light-100">
-                          {fileName}
-                        </p>
-                      )}
-                    </div>
+                    <ImageUpload
+                      type="image"
+                      accept="image/*"
+                      placeholder="Upload your university card"
+                      folder="university-cards"
+                      variant="dark"
+                      onFileChange={field.onChange}
+                      value={field.value}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -210,7 +245,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
           )}
         </div>
 
-        <Button type="submit" className="form-btn mt-6">
+        <Button type="submit" className="form-btn mt-6" disabled={loading}>
           {isSignIn ? "Login" : "Sign Up"}
         </Button>
 

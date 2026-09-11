@@ -4,7 +4,6 @@ import { IBM_Plex_Serif, Mona_Sans } from "next/font/google";
 import Providers from "@/components/Providers";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
-import { Toaster } from "@/components/ui/toast";
 import { auth } from "@/auth";
 
 const ibmPlexSerif = IBM_Plex_Serif({
@@ -41,8 +40,6 @@ export default async function RootLayout({
         <body className="min-h-full flex flex-col">
           <Providers>
             {children}
-
-            <Toaster />
           </Providers>
         </body>
       </SessionProvider>

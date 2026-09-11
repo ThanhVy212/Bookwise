@@ -7,7 +7,9 @@ import {
   date,
   pgEnum,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const STATUS_ENUM = pgEnum("status", [
   "PENDING",
@@ -20,20 +22,24 @@ export const BORROW_STATUS_ENUM = pgEnum("borrow_status", [
   "RETURNED",
 ]);
 
-export const users = pgTable("users", {
-  id: uuid("id").notNull().primaryKey().defaultRandom().unique(),
-  fullName: varchar("full_name", { length: 255 }).notNull(),
-  email: text("email").notNull().unique(),
-  universityId: integer("university_id").notNull().unique(),
-  password: text("password").notNull(),
-  universityCard: text("university_card").notNull(),
-  status: STATUS_ENUM("status").default("PENDING"),
-  role: ROLE_ENUM("role").default("USER"),
-  lastActivityDate: date("last_activity_date").defaultNow(),
-  createdAt: timestamp("created_at", {
-    withTimezone: true,
-  }).defaultNow(),
-});
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").notNull().primaryKey().defaultRandom().unique(),
+    fullName: varchar("full_name", { length: 255 }).notNull(),
+    email: text("email").notNull(),
+    universityId: integer("university_id").notNull().unique(),
+    password: text("password").notNull(),
+    universityCard: text("university_card").notNull(),
+    status: STATUS_ENUM("status").default("PENDING"),
+    role: ROLE_ENUM("role").default("USER"),
+    lastActivityDate: date("last_activity_date").defaultNow(),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+    }).defaultNow(),
+  },
+  (t) => [uniqueIndex("users_email_lower_idx").on(sql`lower(${t.email})`)],
+);
 
 export const books = pgTable("books", {
   id: uuid("id").notNull().primaryKey().defaultRandom().unique(),

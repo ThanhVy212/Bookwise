@@ -31,7 +31,7 @@ CREATE TABLE "borrow_records" (
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() UNIQUE,
 	"full_name" varchar(255) NOT NULL,
-	"email" text NOT NULL UNIQUE,
+	"email" text NOT NULL,
 	"university_id" integer NOT NULL UNIQUE,
 	"password" text NOT NULL,
 	"university_card" text NOT NULL,
@@ -41,5 +41,6 @@ CREATE TABLE "users" (
 	"created_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX "users_email_lower_idx" ON "users" (lower("email"));--> statement-breakpoint
 ALTER TABLE "borrow_records" ADD CONSTRAINT "borrow_records_user_id_users_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id");--> statement-breakpoint
 ALTER TABLE "borrow_records" ADD CONSTRAINT "borrow_records_book_id_books_id_fkey" FOREIGN KEY ("book_id") REFERENCES "books"("id");

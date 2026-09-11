@@ -31,29 +31,37 @@ export const signInWithCredentials = async (
 
 export const signUp = async (params: AuthCredentials) => {
   const { fullName, email, universityId, password, universityCard } = params;
-
-  const existingUser = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (existingUser.length > 0) {
-    return { success: false, error: "User already exists" };
-  }
-
-  const hashedPassword = await hash(password, 10);
+  const normalizedEmail = email.toLowerCase();
 
   try {
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      return { success: false, error: "User already exists" };
+    }
+
+    const hashedPassword = await hash(password, 10);
+
     await db.insert(users).values({
       fullName,
-      email,
+      email: normalizedEmail,
       universityId,
       password: hashedPassword,
       universityCard,
     });
 
-    await signInWithCredentials({ email, password });
+    const signInResult = await signInWithCredentials({
+      email: normalizedEmail,
+      password,
+    });
+
+    if (!signInResult.success) {
+      return { success: true, signInFailed: true };
+    }
 
     return { success: true };
   } catch (err) {

@@ -1,7 +1,7 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "59ae1836-9681-4048-b2f2-7601f1dd72ed",
+  "id": "bfe4c6e8-65a2-433b-a395-b9faea9f9dc8",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -456,6 +456,27 @@
       "table": "users"
     },
     {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "lower(\"email\")",
+          "isExpression": true,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "users_email_lower_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "users"
+    },
+    {
       "nameExplicit": false,
       "columns": [
         "user_id"
@@ -548,17 +569,6 @@
       ],
       "nullsNotDistinct": false,
       "name": "users_id_key",
-      "schema": "public",
-      "table": "users",
-      "entityType": "uniques"
-    },
-    {
-      "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
-      "nullsNotDistinct": false,
-      "name": "users_email_key",
       "schema": "public",
       "table": "users",
       "entityType": "uniques"

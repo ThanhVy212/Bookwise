@@ -20,7 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await db
           .select()
           .from(users)
-          .where(eq(users.email, credentials.email.toString()))
+          .where(eq(users.email, credentials.email.toString().toLowerCase()))
           .limit(1);
 
         if (user.length === 0) return null;
@@ -59,6 +59,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
 
       return session;
+    },
+    async authorized({ auth, request }) {
+      const { pathname } = request.nextUrl;
+
+      if (pathname.startsWith("/api/auth/imageKit")) {
+        return !!auth?.user;
+      }
+
+      return true;
     }
   }
 });

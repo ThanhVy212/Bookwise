@@ -7,9 +7,11 @@ import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 
-const authenticator = async () => {
+const authenticator = async (folder: string) => {
   try {
-    const response = await fetch(`${config.env.apiEndpoint}/api/auth/imageKit`);
+    const response = await fetch(
+      `${config.env.apiEndpoint}/api/auth/imageKit?folder=${encodeURIComponent(folder)}`,
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -115,7 +117,7 @@ const ImageUpload = ({
       setIsUploading(true);
       setProgress(0);
 
-      const auth = await authenticator();
+      const auth = await authenticator(folder);
 
       const result = await upload({
         file: selectedFile,

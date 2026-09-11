@@ -50,6 +50,8 @@ const AuthForm = ({ type }: AuthFormProps) => {
   });
 
   const onSubmit = async (values: AuthFormValues) => {
+    if (loading) return;
+
     const schema = isSignIn ? signInSchema : signUpSchema;
     const result = schema.safeParse(values);
 
@@ -70,33 +72,45 @@ const AuthForm = ({ type }: AuthFormProps) => {
       description: "Please wait while we process your request.",
     });
 
-    const response = isSignIn
-      ? await signInWithCredentials({
-          email: result.data.email,
-          password: result.data.password,
-        })
-      : await signUp(result.data as AuthCredentials);
+    try {
+      const response = isSignIn
+        ? await signInWithCredentials({
+            email: result.data.email,
+            password: result.data.password,
+          })
+        : await signUp(result.data as AuthCredentials);
 
-    if (response?.success) {
-      toast.update(loadingToast, {
-        type: "success",
-        title: isSignIn ? "Welcome Back!" : "Account Created!",
-        description: isSignIn
-          ? "You have successfully signed in."
-          : "Your account has been created successfully.",
-      });
-      router.push("/");
-    } else {
-      toast.update(loadingToast, {
-        type: "error",
-        title: isSignIn ? "Sign In Failed" : "Sign Up Failed",
-        description: isSignIn
-          ? "Invalid email or password. Please try again."
-          : "Failed to create account. Please try again.",
-      });
+      if (response?.success) {
+        if ("signInFailed" in response && response.signInFailed) {
+          toast.update(loadingToast, {
+            type: "success",
+            title: "Account Created!",
+            description:
+              "Your account has been created. Please sign in to continue.",
+          });
+          router.push("/sign-in");
+        } else {
+          toast.update(loadingToast, {
+            type: "success",
+            title: isSignIn ? "Welcome Back!" : "Account Created!",
+            description: isSignIn
+              ? "You have successfully signed in."
+              : "Your account has been created successfully.",
+          });
+          router.push("/");
+        }
+      } else {
+        toast.update(loadingToast, {
+          type: "error",
+          title: isSignIn ? "Sign In Failed" : "Sign Up Failed",
+          description: isSignIn
+            ? "Invalid email or password. Please try again."
+            : "Failed to create account. Please try again.",
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -231,7 +245,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
           )}
         </div>
 
-        <Button type="submit" className="form-btn mt-6">
+        <Button type="submit" className="form-btn mt-6" disabled={loading}>
           {isSignIn ? "Login" : "Sign Up"}
         </Button>
 

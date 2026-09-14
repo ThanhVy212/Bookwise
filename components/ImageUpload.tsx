@@ -10,7 +10,7 @@ import { toast } from "@/components/ui/toast";
 const authenticator = async (folder: string) => {
   try {
     const response = await fetch(
-      `${config.env.apiEndpoint}/api/auth/imagekit?folder=${encodeURIComponent(folder)}`,
+      `${config.env.apiEndpoint}/api/imagekit?folder=${encodeURIComponent(folder)}`,
     );
 
     if (!response.ok) {

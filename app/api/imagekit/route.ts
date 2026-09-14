@@ -1,7 +1,6 @@
 import ImageKit from "@imagekit/nodejs";
 import config from "@/lib/config";
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 
 const imageKit = new ImageKit({
   privateKey: config.env.imagekit.privateKey,
@@ -10,7 +9,6 @@ const imageKit = new ImageKit({
 const ALLOWED_FOLDERS = ["university-cards"];
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 const ALLOWED_MIME_PREFIXES = ["image/"];
-const TOKEN_EXPIRY_SECONDS = 600;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 10;
 
@@ -41,12 +39,6 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function GET(request: Request) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const ip = getClientIp(request);
 
   if (isRateLimited(ip)) {
@@ -68,10 +60,7 @@ export async function GET(request: Request) {
 
   try {
     const authenticationParameters =
-      imageKit.helper.getAuthenticationParameters(
-        undefined,
-        TOKEN_EXPIRY_SECONDS,
-      );
+      imageKit.helper.getAuthenticationParameters();
 
     return NextResponse.json({
       ...authenticationParameters,

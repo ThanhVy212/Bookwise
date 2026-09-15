@@ -1,6 +1,11 @@
 "use client";
 
-import { Video, ImageKitProvider, upload, Image as ImageKitImage } from "@imagekit/next";
+import {
+  Video,
+  ImageKitProvider,
+  upload,
+  Image as ImageKitImage,
+} from "@imagekit/next";
 import Image from "next/image";
 import config from "@/lib/config";
 import { useRef, useState } from "react";
@@ -31,7 +36,7 @@ const authenticator = async (folder: string) => {
   }
 };
 
-const ImageUpload = ({
+const FileUpload = ({
   type,
   accept,
   placeholder,
@@ -261,4 +266,4 @@ const ImageUpload = ({
     </ImageKitProvider>
   );
 };
-export default ImageUpload;
+export default FileUpload;

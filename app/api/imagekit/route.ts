@@ -6,11 +6,16 @@ const imageKit = new ImageKit({
   privateKey: config.env.imagekit.privateKey,
 });
 
-const ALLOWED_FOLDERS = ["university-cards"];
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_MIME_PREFIXES = ["image/"];
+const ALLOWED_FOLDERS = [
+  "university-cards",
+  "books/covers",
+  "books/videos",
+  "books",
+];
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+const ALLOWED_MIME_PREFIXES = ["image/", "video/"];
 const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAX = 20;
 
 const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
 

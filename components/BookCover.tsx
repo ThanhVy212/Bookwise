@@ -1,7 +1,10 @@
+"use client";
+
 import React from "react";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import { ImageKitProvider, Image as ImageKitImage } from "@imagekit/next";
 import BookCoverSvg from "@/components/BookCoverSvg";
+import config from "@/lib/config";
 
 const variantStyles: Record<BookCoverVariant, string> = {
   extraSmall: "book-cover_extra_small",
@@ -18,26 +21,28 @@ const BookCover = ({
   coverUrl = "https://placeholder.co/400x600.png",
 }: BookCoverProps) => {
   return (
-    <div
-      className={cn(
-        "relative transition-all duration-300",
-        variantStyles[variant],
-        className,
-      )}
-    >
-      <BookCoverSvg coverColor={coverColor} />
+    <ImageKitProvider urlEndpoint={config.env.imagekit.urlEndpoint}>
       <div
-        className="absolute z-10"
-        style={{ left: "12%", width: "87.5%", height: "88%" }}
+        className={cn(
+          "relative transition-all duration-300",
+          variantStyles[variant],
+          className,
+        )}
       >
-        <Image
-          src={coverUrl}
-          alt="Book cover"
-          fill
-          className="rounded-sm object-fill"
-        />
+        <BookCoverSvg coverColor={coverColor} />
+        <div
+          className="absolute z-10"
+          style={{ left: "12%", width: "87.5%", height: "88%" }}
+        >
+          <ImageKitImage
+            src={coverUrl}
+            alt="Book cover"
+            fill
+            className="rounded-sm object-fill"
+          />
+        </div>
       </div>
-    </div>
+    </ImageKitProvider>
   );
 };
 export default BookCover;

@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import ImageUpload from "@/components/ImageUpload";
+import FileUpload from "@/components/FileUpload";
 import { FIELD_NAMES } from "@/constants";
 import {
   AuthFormValues,
@@ -228,7 +228,7 @@ const AuthForm = ({ type }: AuthFormProps) => {
                     {FIELD_NAMES.universityCard}
                   </FormLabel>
                   <FormControl>
-                    <ImageUpload
+                    <FileUpload
                       type="image"
                       accept="image/*"
                       placeholder="Upload your university card"

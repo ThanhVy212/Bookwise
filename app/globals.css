@@ -3,9 +3,12 @@
 @import "../styles/admin.css";
 
 @theme inline {
-  --font-sans: var(--font-mona-sans);
-  --font-serif: var(--font-ibm-plex-serif);
+  --font-sans: var(--font-ibm-plex-sans), var(--font-mona-sans), sans-serif;
+  --font-serif: var(--font-ibm-plex-serif), serif;
+  --font-bebas-neue: var(--font-bebas-neue), sans-serif;
+  --font-ibm-plex-sans: var(--font-ibm-plex-sans), sans-serif;
 }
+
 
 /* Custom utilities */
 @utility gradient-vertical {
@@ -179,13 +182,13 @@
 
   /* Book List */
   .book-list {
-    @apply mt-10 flex flex-wrap gap-5 max-xs:justify-between xs:gap-10;
+    @apply mt-10 grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 sm:gap-8 justify-items-center sm:justify-items-start;
   }
 
   /* Book Overview */
   .book-overview {
     @apply flex flex-col-reverse items-center gap-12
-    sm:gap-32 xl:flex-row xl:gap-8;
+    sm:gap-32 xl:flex-row xl:items-start xl:gap-16;
   }
 
   .book-overview h1 {
@@ -213,9 +216,9 @@
   }
 
   .book-overview_btn {
-    @apply mt-4 min-h-14 w-fit bg-primary text-dark-100
-    hover:bg-primary/90 max-md:w-full;
+    @apply mt-4 min-h-14 w-fit inline-flex flex-row items-center justify-center gap-3 rounded-xl bg-primary px-8 py-3.5 font-bebas-neue text-2xl font-bold uppercase tracking-wider text-dark-100 transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] shadow-md max-md:w-full cursor-pointer;
   }
+
 
   /* File Upload */
   .upload-btn {

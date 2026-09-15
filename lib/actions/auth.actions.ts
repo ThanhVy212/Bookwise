@@ -92,3 +92,39 @@ export const signUp = async (params: AuthCredentials) => {
     return { success: false, error: err };
   }
 };
+
+export const getUserById = async (userId: string) => {
+  try {
+    const user = await db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        email: users.email,
+        universityId: users.universityId,
+        universityCard: users.universityCard,
+        status: users.status,
+        role: users.role,
+        lastActivityDate: users.lastActivityDate,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user.length === 0) {
+      return { success: false, error: "User not found" };
+    }
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(user[0])),
+    };
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    return {
+      success: false,
+      error: "An error occurred while fetching the user",
+    };
+  }
+};
+

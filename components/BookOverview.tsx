@@ -1,7 +1,12 @@
 import React from "react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import BookCover from "@/components/BookCover";
+
+
+interface BookOverviewProps extends Book {
+  userId?: string;
+}
 
 const BookOverview = ({
   id,
@@ -14,14 +19,13 @@ const BookOverview = ({
   description,
   coverColor,
   coverUrl,
-  videoUrl,
-  summary,
-  createdAt,
-}: Book) => {
+}: BookOverviewProps) => {
   return (
-    <section className="book-overview">
+    <section className="flex flex-col-reverse items-center justify-between gap-12 lg:flex-row lg:items-start lg:gap-16">
       <div className="flex flex-1 flex-col gap-5">
-        <h1>{title}</h1>
+        <h1 className="text-4xl font-bold text-white sm:text-6xl lg:text-7xl leading-tight">
+          {title}
+        </h1>
 
         <div className="book-info">
           <p>
@@ -32,9 +36,9 @@ const BookOverview = ({
             <span className="font-semibold text-light-200">{genre}</span>
           </p>
 
-          <div className="flex flex-row gap-1">
-            <Image src="/icons/star.svg" alt="star" width={22} height={22} />
-            <p>{rating}</p>
+          <div className="flex flex-row items-center gap-1">
+            <Image src="/icons/star.svg" alt="star" width={20} height={20} />
+            <p className="font-medium text-white">{rating}</p>
           </div>
         </div>
 
@@ -47,27 +51,25 @@ const BookOverview = ({
           </p>
         </div>
 
-        <p className="book-description">{description}</p>
+        <p className="book-description leading-relaxed">{description}</p>
 
-        <Button className="book-overview_btn">
+        <Link href={`/books/${id}`} className="book-overview_btn">
           <Image src="/icons/book.svg" alt="book" width={22} height={22} />
-          <p className="font-semibold text-xl text-dark-100 capitalize">
-            Borrow
-          </p>
-        </Button>
+          <span>BORROW BOOK</span>
+        </Link>
       </div>
 
-      <div className="relative flex flex-1 justify-center">
-        <div className="relative">
+      {/* 3D Book Cover */}
+      <div className="relative flex flex-1 items-center justify-center pt-6 lg:pt-0">
+        <div className="relative z-10">
           <BookCover
             variant="wide"
-            className="z-10"
             coverColor={coverColor}
             coverUrl={coverUrl}
           />
         </div>
 
-        <div className="absolute left-16 top-10 rotate-12 opacity-40 max-sm:hidden">
+        <div className="absolute top-0 right-10 sm:right-16 rotate-12 opacity-40 blur-[1px] hidden sm:block">
           <BookCover
             variant="wide"
             coverColor={coverColor}
@@ -79,3 +81,5 @@ const BookOverview = ({
   );
 };
 export default BookOverview;
+
+

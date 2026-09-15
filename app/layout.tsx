@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Serif, Mona_Sans } from "next/font/google";
+import {
+  IBM_Plex_Serif,
+  Mona_Sans,
+  Bebas_Neue,
+  IBM_Plex_Sans,
+} from "next/font/google";
 
 import Providers from "@/components/Providers";
 import "./globals.css";
@@ -19,6 +24,21 @@ const monaSans = Mona_Sans({
   display: "swap",
 });
 
+const bebasNeue = Bebas_Neue({
+  variable: "--font-bebas-neue",
+  weight: ["400"],
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  variable: "--font-ibm-plex-sans",
+  weight: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+  display: "swap",
+});
+
+
 export const metadata: Metadata = {
   title: "BookWise",
   description:
@@ -34,9 +54,10 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${ibmPlexSerif.variable} ${monaSans.variable} relative font-sans h-full antialiased`}
+      className={`${ibmPlexSerif.variable} ${monaSans.variable} ${bebasNeue.variable} ${ibmPlexSans.variable} relative font-sans h-full antialiased`}
     >
       <SessionProvider session={session}>
+
         <body className="min-h-full flex flex-col">
           <Providers>
             {children}

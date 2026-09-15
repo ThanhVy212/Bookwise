@@ -37,7 +37,7 @@ const BookForm = ({ type = "create", ...book }: Props) => {
       description: book.description ?? "",
       author: book.author ?? "",
       genre: book.genre ?? "",
-      rating: book.rating ?? 1,
+      rating: book.rating ?? 4,
       totalCopies: book.totalCopies ?? 1,
       coverUrl: book.coverUrl ?? "",
       coverColor: book.coverColor ?? "#000000",
@@ -69,7 +69,11 @@ const BookForm = ({ type = "create", ...book }: Props) => {
               : "Book updated successfully.",
         });
 
-        router.push("/admin/books");
+        if (type === "create" && result.data?.id) {
+          router.push(`/admin/books/${result.data.id}`);
+        } else {
+          router.push("/admin/books");
+        }
       } else {
         toast.update(loadingToast, {
           type: "error",
@@ -102,7 +106,6 @@ const BookForm = ({ type = "create", ...book }: Props) => {
               </FormLabel>
               <FormControl>
                 <Input
-                  required
                   placeholder="Enter the book title"
                   {...field}
                   className="book-form_input"
@@ -123,7 +126,6 @@ const BookForm = ({ type = "create", ...book }: Props) => {
               </FormLabel>
               <FormControl>
                 <Input
-                  required
                   placeholder="Enter the author name"
                   {...field}
                   className="book-form_input"
@@ -144,7 +146,6 @@ const BookForm = ({ type = "create", ...book }: Props) => {
               </FormLabel>
               <FormControl>
                 <Input
-                  required
                   placeholder="Enter the genre of the book"
                   {...field}
                   className="book-form_input"
@@ -243,6 +244,27 @@ const BookForm = ({ type = "create", ...book }: Props) => {
                   variant="light"
                   onFileChange={field.onChange}
                   value={field.value}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem className="flex flex-col gap-1">
+              <FormLabel className="text-base font-semibold text-dark-400">
+                Book Description
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Write a detailed description of the book"
+                  rows={5}
+                  {...field}
+                  className="book-form_input"
                 />
               </FormControl>
               <FormMessage />

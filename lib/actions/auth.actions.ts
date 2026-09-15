@@ -4,7 +4,7 @@ import { db } from "@/database/drizzle";
 import { users } from "@/database/schema";
 import { eq } from "drizzle-orm";
 import { hash } from "bcryptjs";
-import { signIn } from "@/auth";
+import { signIn, auth } from "@/auth";
 import { headers } from "next/headers";
 import ratelimit from "@/lib/ratelimit";
 import { redirect } from "next/navigation";
@@ -95,6 +95,19 @@ export const signUp = async (params: AuthCredentials) => {
 
 export const getUserById = async (userId: string) => {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const isOwnProfile = session.user.id === userId;
+    const isAdmin = (session.user as any).role === "ADMIN";
+
+    if (!isOwnProfile && !isAdmin) {
+      return { success: false, error: "Forbidden" };
+    }
+
     const user = await db
       .select({
         id: users.id,

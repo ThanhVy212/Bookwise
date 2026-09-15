@@ -69,11 +69,7 @@ const BookForm = ({ type = "create", ...book }: Props) => {
               : "Book updated successfully.",
         });
 
-        if (type === "create" && result.data?.id) {
-          router.push(`/admin/books/${result.data.id}`);
-        } else {
-          router.push("/admin/books");
-        }
+        router.push("/admin/books");
       } else {
         toast.update(loadingToast, {
           type: "error",

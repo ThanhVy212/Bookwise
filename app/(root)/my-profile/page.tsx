@@ -1,6 +1,6 @@
 import React from "react";
 import { auth } from "@/auth";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getUserById } from "@/lib/actions/auth.actions";
 import { getUserBorrowedBooks } from "@/lib/actions/book.actions";
 import StudentCard from "@/components/StudentCard";
@@ -20,15 +20,11 @@ const Page = async () => {
     getUserBorrowedBooks(session.user.id),
   ]);
 
-  const user = userResult.success && userResult.data
-    ? userResult.data
-    : {
-        fullName: session.user.name || "Student",
-        email: session.user.email || "",
-        universityId: 12345678,
-        universityCard: "",
-        status: "APPROVED",
-      };
+  if (!userResult.success) {
+    notFound();
+  }
+
+  const user = userResult.data;
 
   const borrowedBooks = borrowedResult.success ? borrowedResult.data : [];
 

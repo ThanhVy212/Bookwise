@@ -37,11 +37,11 @@ const SearchFilter = ({ genres = [], selectedGenre = "" }: SearchFilterProps) =>
       <select
         value={selectedGenre || "all"}
         onChange={handleGenreChange}
-        aria-label="Filter by department"
+        aria-label="Filter by genre"
         className="select-trigger appearance-none cursor-pointer rounded-lg bg-dark-300 pl-4 pr-10 py-2.5 text-sm font-medium text-light-100 border border-dark-100/50 hover:border-light-100/30 focus:outline-none focus:ring-1 focus:ring-primary transition-all"
       >
         <option value="all" className="bg-dark-300 text-white">
-          Filter by: Department
+          Filter by: Genre
         </option>
         {genres.map((genre) => (
           <option key={genre} value={genre} className="bg-dark-300 text-white">

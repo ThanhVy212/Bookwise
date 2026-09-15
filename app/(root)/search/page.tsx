@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import { getAllBooks } from "@/lib/actions/book.actions";
 import SearchInput from "@/components/SearchInput";
 import SearchFilter from "@/components/SearchFilter";
@@ -19,18 +20,84 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   const resolvedParams = await searchParams;
   const query = resolvedParams.query || "";
   const genre = resolvedParams.genre || "";
-  const page = Number(resolvedParams.page) || 1;
   const sort = resolvedParams.sort || "latest";
+
+  const parsedPage = Number(resolvedParams.page);
+  const requestedPage = Number.isInteger(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
 
   const result = await getAllBooks({
     query,
     genre,
-    page,
+    page: requestedPage,
     limit: 12,
     sort,
   });
 
-  const { books = [], totalPages = 1, genres = [] } = result.data || {};
+  if (!result.success) {
+    return (
+      <div className="flex flex-col gap-12 sm:gap-16 pb-16">
+        <section className="flex flex-col items-center justify-center pt-4 sm:pt-8">
+          <p className="text-xs sm:text-sm font-semibold tracking-widest text-light-100 uppercase text-center mb-3">
+            DISCOVER YOUR NEXT GREAT READ:
+          </p>
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white text-center leading-tight max-w-2xl">
+            Explore and Search for{" "}
+            <span className="text-primary font-bold">Any Book</span> In Our Library
+          </h1>
+          <div className="w-full max-w-xl mt-8">
+            <SearchInput />
+          </div>
+        </section>
+        <section className="flex flex-col items-center justify-center rounded-3xl bg-dark-300/40 p-16 text-center border border-light-100/5">
+          <Image src="/icons/error.svg" alt="error" width={48} height={48} className="mb-4 opacity-60" />
+          <h2 className="text-xl font-bold text-white">Something went wrong</h2>
+          <p className="mt-2 text-sm text-light-100 max-w-sm leading-relaxed">
+            We couldn&apos;t load the book catalog. Please try again later.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  const { books = [], genres = [], ...rest } = result.data || {};
+  let totalPages = rest.totalPages ?? 1;
+
+  let page = requestedPage;
+  if (page > totalPages) {
+    page = totalPages;
+  }
+
+  const finalResult = page !== requestedPage
+    ? await getAllBooks({ query, genre, page, limit: 12, sort })
+    : result;
+
+  if (!finalResult.success) {
+    return (
+      <div className="flex flex-col gap-12 sm:gap-16 pb-16">
+        <section className="flex flex-col items-center justify-center pt-4 sm:pt-8">
+          <p className="text-xs sm:text-sm font-semibold tracking-widest text-light-100 uppercase text-center mb-3">
+            DISCOVER YOUR NEXT GREAT READ:
+          </p>
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white text-center leading-tight max-w-2xl">
+            Explore and Search for{" "}
+            <span className="text-primary font-bold">Any Book</span> In Our Library
+          </h1>
+          <div className="w-full max-w-xl mt-8">
+            <SearchInput />
+          </div>
+        </section>
+        <section className="flex flex-col items-center justify-center rounded-3xl bg-dark-300/40 p-16 text-center border border-light-100/5">
+          <Image src="/icons/error.svg" alt="error" width={48} height={48} className="mb-4 opacity-60" />
+          <h2 className="text-xl font-bold text-white">Something went wrong</h2>
+          <p className="mt-2 text-sm text-light-100 max-w-sm leading-relaxed">
+            We couldn&apos;t load the book catalog. Please try again later.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  const finalBooks = finalResult.data?.books ?? books;
 
   return (
     <div className="flex flex-col gap-12 sm:gap-16 pb-16">
@@ -67,10 +134,10 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
         </div>
 
         {/* Book Grid or Not Found */}
-        {books.length > 0 ? (
+        {finalBooks.length > 0 ? (
           <>
             <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 sm:gap-8">
-              {books.map((book) => (
+              {finalBooks.map((book) => (
                 <SearchBookCard
                   key={book.id}
                   id={book.id}

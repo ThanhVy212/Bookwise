@@ -4,6 +4,7 @@ import { db } from "@/database/drizzle";
 import { books, borrowRecords, users } from "@/database/schema";
 import { BookFormValues } from "@/lib/validations";
 import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { auth } from "@/auth";
 
 export const getBookById = async (bookId: string) => {
   try {
@@ -14,7 +15,7 @@ export const getBookById = async (bookId: string) => {
       .limit(1);
 
     if (!book) {
-      return { success: false, message: "Book not found" };
+      return { success: false, type: "not_found" as const };
     }
 
     return {
@@ -25,6 +26,7 @@ export const getBookById = async (bookId: string) => {
     console.error("Error fetching book:", error);
     return {
       success: false,
+      type: "database_error" as const,
       message: "An error occurred while fetching the book",
     };
   }
@@ -58,18 +60,20 @@ export const createBook = async (params: BookFormValues) => {
 
 export const checkBookBorrowEligibility = async ({
   bookId,
-  userId,
 }: {
   bookId: string;
-  userId: string;
 }) => {
   try {
-    if (!userId) {
+    const session = await auth();
+
+    if (!session?.user?.id) {
       return {
         isEligible: false,
         message: "Please sign in to borrow books",
       };
     }
+
+    const userId = session.user.id;
 
     const [book] = await db
       .select()
@@ -127,18 +131,20 @@ export const checkBookBorrowEligibility = async ({
 
 export const borrowBook = async ({
   bookId,
-  userId,
 }: {
   bookId: string;
-  userId: string;
 }) => {
   try {
-    if (!userId) {
+    const session = await auth();
+
+    if (!session?.user?.id) {
       return {
         success: false,
         error: "Please sign in to borrow books",
       };
     }
+
+    const userId = session.user.id;
 
     const [book] = await db
       .select()
@@ -217,8 +223,17 @@ export const borrowBook = async ({
 
 export const getUserBorrowedBooks = async (userId: string) => {
   try {
-    if (!userId) {
-      return { success: false, data: [] };
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized", data: [] };
+    }
+
+    const isOwnRecords = session.user.id === userId;
+    const isAdmin = (session.user as any).role === "ADMIN";
+
+    if (!isOwnRecords && !isAdmin) {
+      return { success: false, error: "Forbidden", data: [] };
     }
 
     const records = await db

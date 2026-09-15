@@ -49,6 +49,7 @@ const seed = async () => {
         "/books/videos",
       );
 
+      // @ts-ignore
       await db.insert(books).values({
         ...book,
         coverUrl,

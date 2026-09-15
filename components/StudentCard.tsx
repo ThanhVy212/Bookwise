@@ -42,14 +42,16 @@ const StudentCard = ({ user }: StudentCardProps) => {
 
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5">
-              <Image
-                src="/icons/verified.svg"
-                alt="verified"
-                width={16}
-                height={16}
-              />
+              {user.status === "APPROVED" && (
+                <Image
+                  src="/icons/verified.svg"
+                  alt="verified"
+                  width={16}
+                  height={16}
+                />
+              )}
               <span className="text-xs font-medium text-[#FFE1BD]">
-                Verified Student
+                {user.status === "APPROVED" ? "Verified Student" : user.status || "N/A"}
               </span>
             </div>
 

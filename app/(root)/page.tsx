@@ -14,6 +14,17 @@ const Home = async () => {
     .limit(13)
     .orderBy(desc(books.createdAt))) as Book[];
 
+  if (lastestBooks.length === 0) {
+    return (
+      <section className="flex flex-col items-center justify-center rounded-3xl bg-dark-300/40 p-16 text-center border border-light-100/5">
+        <h2 className="text-2xl font-bold text-white">No books available</h2>
+        <p className="mt-3 text-base text-light-100 max-w-md leading-relaxed">
+          The library catalog is empty. Check back later for new additions.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <>
       <BookOverview {...lastestBooks[0]} userId={session?.user?.id as string} />

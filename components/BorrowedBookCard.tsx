@@ -131,7 +131,7 @@ const BorrowedBookCard = ({
                       height={14}
                     />
                     <span className="font-medium text-[#2CC171]">
-                      Returned on {formatDate(record.returnDate || record.dueDate)}
+                      Returned on {record.returnDate ? formatDate(record.returnDate) : "N/A"}
                     </span>
                   </>
                 ) : isOverdue ? (

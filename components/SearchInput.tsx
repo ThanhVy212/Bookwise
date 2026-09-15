@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { X } from "lucide-react";
@@ -26,21 +26,24 @@ const SearchInput = ({
     setValue(initialQuery);
   }, [initialQuery]);
 
-  const updateSearch = (newQuery: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const updateSearch = useCallback(
+    (newQuery: string) => {
+      const params = new URLSearchParams(searchParams.toString());
 
-    if (newQuery.trim()) {
-      params.set("query", newQuery.trim());
-    } else {
-      params.delete("query");
-    }
+      if (newQuery.trim()) {
+        params.set("query", newQuery.trim());
+      } else {
+        params.delete("query");
+      }
 
-    params.set("page", "1"); // Reset page when query changes
+      params.set("page", "1");
 
-    startTransition(() => {
-      router.push(`${pathname}?${params.toString()}`);
-    });
-  };
+      startTransition(() => {
+        router.push(`${pathname}?${params.toString()}`);
+      });
+    },
+    [searchParams, pathname, router, startTransition],
+  );
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -50,7 +53,7 @@ const SearchInput = ({
     }, 400);
 
     return () => clearTimeout(handler);
-  }, [value]);
+  }, [value, initialQuery, updateSearch]);
 
   const handleClear = () => {
     setValue("");

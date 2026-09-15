@@ -13,6 +13,7 @@ interface BookVideoProps {
 
 const BookVideo = ({ videoUrl, coverUrl }: BookVideoProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   if (!videoUrl) {
@@ -56,20 +57,29 @@ const BookVideo = ({ videoUrl, coverUrl }: BookVideoProps) => {
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl bg-dark-300 shadow-2xl aspect-video max-h-[380px] group">
-      <video
-        ref={videoRef}
-        src={fullVideoSrc}
-        controls={isPlaying}
-        poster={posterSrc}
-        className="h-full w-full object-cover"
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
+      {hasError ? (
+        <div className="flex h-full w-full items-center justify-center text-light-100 text-sm">
+          Video is not available.
+        </div>
+      ) : (
+        <video
+          ref={videoRef}
+          src={fullVideoSrc}
+          controls={isPlaying}
+          poster={posterSrc}
+          className="h-full w-full object-cover"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onError={() => setHasError(true)}
+        />
+      )}
 
       {!isPlaying && (
-        <div
+        <button
+          type="button"
           onClick={handlePlay}
-          className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-black/40 backdrop-blur-[1px] transition-all hover:bg-black/30"
+          aria-label="Play video"
+          className="absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-black/40 backdrop-blur-[1px] transition-all hover:bg-black/30 border-0"
         >
           {posterSrc && (
             <img
@@ -83,7 +93,7 @@ const BookVideo = ({ videoUrl, coverUrl }: BookVideoProps) => {
               <Play className="size-6 fill-dark-100 translate-x-0.5" />
             </div>
           </div>
-        </div>
+        </button>
       )}
     </div>
   );

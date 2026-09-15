@@ -18,8 +18,11 @@ const Page = async ({ params }: Props) => {
 
   const bookResult = await getBookById(id);
 
-  if (!bookResult.success || !bookResult.data) {
-    notFound();
+  if (!bookResult.success) {
+    if (bookResult.type === "not_found") {
+      notFound();
+    }
+    throw new Error(bookResult.message ?? "Failed to fetch book");
   }
 
   const book: Book = bookResult.data;

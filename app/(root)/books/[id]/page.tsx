@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getBookById, getSimilarBooks } from "@/lib/actions/book.actions";
+import { getBookById, getSimilarBooks, checkBookBorrowEligibility } from "@/lib/actions/book.actions";
 import BookCover from "@/components/BookCover";
 import BorrowBook from "@/components/BorrowBook";
 import BookVideo from "@/components/BookVideo";
@@ -34,6 +34,12 @@ const Page = async ({ params }: Props) => {
   });
 
   const similarBooks: Book[] = similarResult.data || [];
+
+  let alreadyBorrowed = false;
+  if (session?.user?.id) {
+    const eligibility = await checkBookBorrowEligibility({ bookId: id });
+    alreadyBorrowed = eligibility.alreadyBorrowed === true;
+  }
 
   return (
     <div className="flex flex-col gap-16 lg:gap-24">
@@ -79,6 +85,7 @@ const Page = async ({ params }: Props) => {
             <BorrowBook
               bookId={book.id}
               userId={session?.user?.id as string}
+              alreadyBorrowed={alreadyBorrowed}
             />
           </div>
         </div>

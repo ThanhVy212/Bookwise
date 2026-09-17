@@ -100,12 +100,13 @@ const AuthForm = ({ type }: AuthFormProps) => {
           router.push("/");
         }
       } else {
+        const errorMsg = isSignIn
+          ? "Invalid email or password. Please try again."
+          : (response?.error as string) || "Failed to create account. Please try again.";
         toast.update(loadingToast, {
           type: "error",
           title: isSignIn ? "Sign In Failed" : "Sign Up Failed",
-          description: isSignIn
-            ? "Invalid email or password. Please try again."
-            : "Failed to create account. Please try again.",
+          description: errorMsg,
         });
       }
     } finally {

@@ -56,7 +56,17 @@ export const signUp = async (params: AuthCredentials) => {
       .limit(1);
 
     if (existingUser.length > 0) {
-      return { success: false, error: "User already exists" };
+      return { success: false, error: "An account with this email already exists" };
+    }
+
+    const existingId = await db
+      .select()
+      .from(users)
+      .where(eq(users.universityId, universityId))
+      .limit(1);
+
+    if (existingId.length > 0) {
+      return { success: false, error: "This Student ID is already registered" };
     }
 
     const hashedPassword = await hash(password, 10);
@@ -75,7 +85,7 @@ export const signUp = async (params: AuthCredentials) => {
         email,
         fullName,
       },
-    });
+    }).catch(() => {});
 
     const signInResult = await signInWithCredentials({
       email: normalizedEmail,
@@ -87,9 +97,18 @@ export const signUp = async (params: AuthCredentials) => {
     }
 
     return { success: true };
-  } catch (err) {
+  } catch (err: any) {
     console.log("Failed to signUp", err);
-    return { success: false, error: err };
+    if (err?.code === "23505") {
+      if (err.constraint?.includes("email")) {
+        return { success: false, error: "An account with this email already exists" };
+      }
+      if (err.constraint?.includes("university")) {
+        return { success: false, error: "This Student ID is already registered" };
+      }
+      return { success: false, error: "An account with this information already exists" };
+    }
+    return { success: false, error: "Failed to create account. Please try again." };
   }
 };
 

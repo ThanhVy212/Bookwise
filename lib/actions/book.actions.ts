@@ -5,6 +5,8 @@ import { books, borrowRecords, users } from "@/database/schema";
 import { BookFormValues } from "@/lib/validations";
 import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { sendEmail } from "@/lib/workflow";
+import { borrowConfirmationEmail, receiptEmail } from "@/lib/email-templates";
 
 export const getBookById = async (bookId: string) => {
   try {
@@ -203,6 +205,50 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
         availableCopies: book.availableCopies - 1,
       })
       .where(eq(books.id, bookId));
+
+    const [borrower] = await db
+      .select({ email: users.email, fullName: users.fullName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (borrower) {
+      const borrowDateStr = new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+      const dueDateStr = new Date(dueDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+
+      await sendEmail({
+        email: borrower.email,
+        subject: `You've Borrowed ${book.title}!`,
+        message: borrowConfirmationEmail(
+          borrower.fullName,
+          book.title,
+          borrowDateStr,
+          dueDateStr,
+        ),
+      }).catch(() => {});
+
+      await sendEmail({
+        email: borrower.email,
+        subject: `Your Receipt for ${book.title} is Ready!`,
+        message: receiptEmail(
+          borrower.fullName,
+          book.title,
+          book.author,
+          book.genre,
+          borrowDateStr,
+          dueDateStr,
+          7,
+        ),
+      }).catch(() => {});
+    }
 
     return {
       success: true,

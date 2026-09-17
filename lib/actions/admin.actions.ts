@@ -4,6 +4,13 @@ import { db } from "@/database/drizzle";
 import { books, borrowRecords, users } from "@/database/schema";
 import { auth } from "@/auth";
 import { and, asc, desc, eq, ilike, or, sql, count } from "drizzle-orm";
+import { sendEmail } from "@/lib/workflow";
+import {
+  approvalEmail,
+  rejectionEmail,
+  returnConfirmationEmail,
+  receiptEmail,
+} from "@/lib/email-templates";
 
 export const getAllUsers = async ({
   query = "",
@@ -229,10 +236,24 @@ export const approveAccountRequest = async (userId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
+    const [targetUser] = await db
+      .select({ email: users.email, fullName: users.fullName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
     await db
       .update(users)
       .set({ status: "APPROVED" })
       .where(eq(users.id, userId));
+
+    if (targetUser) {
+      await sendEmail({
+        email: targetUser.email,
+        subject: "Your BookWise Account Has Been Approved!",
+        message: approvalEmail(targetUser.fullName),
+      }).catch(() => {});
+    }
 
     return { success: true };
   } catch (error) {
@@ -258,10 +279,24 @@ export const rejectAccountRequest = async (userId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
+    const [targetUser] = await db
+      .select({ email: users.email, fullName: users.fullName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
     await db
       .update(users)
       .set({ status: "REJECTED" })
       .where(eq(users.id, userId));
+
+    if (targetUser) {
+      await sendEmail({
+        email: targetUser.email,
+        subject: "Your BookWise Account Was Not Approved",
+        message: rejectionEmail(targetUser.fullName),
+      }).catch(() => {});
+    }
 
     return { success: true };
   } catch (error) {
@@ -440,6 +475,20 @@ export const updateBorrowRecordStatus = async ({
           .update(books)
           .set({ availableCopies: book.availableCopies + 1 })
           .where(eq(books.id, record.bookId));
+
+        const [borrower] = await db
+          .select({ email: users.email, fullName: users.fullName })
+          .from(users)
+          .where(eq(users.id, record.userId))
+          .limit(1);
+
+        if (borrower) {
+          await sendEmail({
+            email: borrower.email,
+            subject: `Thank You for Returning ${book.title}!`,
+            message: returnConfirmationEmail(borrower.fullName, book.title),
+          }).catch(() => {});
+        }
       }
     }
 

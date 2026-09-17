@@ -9,9 +9,10 @@ import { toast } from "sonner";
 interface BorrowBookProps {
   bookId: string;
   userId?: string;
+  alreadyBorrowed?: boolean;
 }
 
-const BorrowBook = ({ bookId, userId }: BorrowBookProps) => {
+const BorrowBook = ({ bookId, userId, alreadyBorrowed = false }: BorrowBookProps) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -45,10 +46,12 @@ const BorrowBook = ({ bookId, userId }: BorrowBookProps) => {
       type="button"
       className="book-overview_btn"
       onClick={handleBorrowBook}
-      disabled={!userId || loading}
+      disabled={!userId || loading || alreadyBorrowed}
     >
       <Image src="/icons/book.svg" alt="book" width={22} height={22} />
-      <span>{loading ? "PROCESSING..." : "BORROW BOOK REQUEST"}</span>
+      <span>
+        {alreadyBorrowed ? "BORROWED" : loading ? "PROCESSING..." : "BORROW BOOK REQUEST"}
+      </span>
     </button>
   );
 };

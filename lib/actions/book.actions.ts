@@ -430,4 +430,53 @@ export const getAllBooks = async ({
   }
 };
 
+export const updateBook = async (
+  bookId: string,
+  params: Partial<BookFormValues>,
+) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const [existingBook] = await db
+      .select()
+      .from(books)
+      .where(eq(books.id, bookId))
+      .limit(1);
+
+    if (!existingBook) {
+      return { success: false, message: "Book not found" };
+    }
+
+    let availableCopies = existingBook.availableCopies;
+    if (params.totalCopies !== undefined) {
+      const copyDiff = params.totalCopies - existingBook.totalCopies;
+      availableCopies = Math.max(0, existingBook.availableCopies + copyDiff);
+    }
+
+    const [updatedBook] = await db
+      .update(books)
+      .set({
+        ...params,
+        availableCopies,
+      })
+      .where(eq(books.id, bookId))
+      .returning();
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(updatedBook)),
+    };
+  } catch (error) {
+    console.error("Error updating book:", error);
+    return {
+      success: false,
+      message: "An error occurred while updating the book",
+    };
+  }
+};
+
+
 

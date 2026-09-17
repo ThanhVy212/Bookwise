@@ -153,16 +153,7 @@
 
     /* Header */
     .admin-header {
-        @apply mb-5 flex flex-col items-start justify-between gap-5 sm:mb-10 lg:flex-row lg:items-end;
-    }
-
-    /* Search */
-    .admin-search {
-        @apply flex min-h-14 w-full items-center gap-1 rounded-md border border-gray-100 bg-light-600 px-4 lg:max-w-md;
-    }
-
-    .admin-search_input {
-        @apply w-full border-0 bg-transparent shadow-none outline-none focus:border-0 focus:outline-none focus:ring-0;
+        @apply mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center;
     }
 
     /* Sidebar */
@@ -201,5 +192,99 @@
 
     .user-card .email {
         @apply line-clamp-1 w-full break-words text-sm text-light-500;
+    }
+
+    /* Table styles */
+    table {
+        @apply border-collapse;
+    }
+
+    th {
+        @apply text-left;
+    }
+
+    td {
+        @apply align-middle;
+    }
+
+    /* Status badges */
+    .status-badge {
+        @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+    }
+
+    .status-borrowed {
+        @apply bg-blue-100 text-blue-700;
+    }
+
+    .status-returned {
+        @apply bg-green-100 text-green-700;
+    }
+
+    .status-late {
+        @apply bg-red-100 text-red-700;
+    }
+
+    .status-pending {
+        @apply bg-yellow-100 text-yellow-700;
+    }
+
+    .status-approved {
+        @apply bg-green-100 text-green-700;
+    }
+
+    .status-rejected {
+        @apply bg-red-100 text-red-700;
+    }
+
+    /* Role badges */
+    .role-admin {
+        @apply bg-purple-100 text-purple-700;
+    }
+
+    .role-user {
+        @apply bg-green-100 text-green-700;
+    }
+
+    /* Empty state */
+    .empty-state {
+        @apply flex flex-col items-center justify-center py-16;
+    }
+
+    .empty-state-icon {
+        @apply opacity-50;
+    }
+
+    .empty-state-title {
+        @apply mt-4 text-lg font-semibold text-dark-400;
+    }
+
+    .empty-state-description {
+        @apply text-sm text-slate-500;
+    }
+
+    /* Stat trends */
+    .stat-trend-up {
+        @apply text-green-600;
+    }
+
+    .stat-trend-down {
+        @apply text-red-500;
+    }
+
+    /* Action buttons */
+    .action-btn {
+        @apply p-2 rounded-lg transition-colors cursor-pointer;
+    }
+
+    .action-btn-edit {
+        @apply text-blue-500 hover:bg-blue-50;
+    }
+
+    .action-btn-delete {
+        @apply text-red-500 hover:bg-red-50;
+    }
+
+    .action-btn-view {
+        @apply text-blue-600 hover:text-blue-800;
     }
 }

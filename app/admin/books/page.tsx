@@ -12,7 +12,7 @@ const BooksPage = async ({
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) => {
   const params = await searchParams;
-  const page = Number(params.page) || 1;
+  const page = Math.max(1, Math.floor(Number(params.page) || 1));
   const query = params.query || "";
   const sort = params.sort || "latest";
 
@@ -130,7 +130,7 @@ const BooksPage = async ({
             (pageNum) => (
               <a
                 key={pageNum}
-                href={`/admin/books?page=${pageNum}${query ? `&query=${query}` : ""}`}
+                href={`/admin/books?${new URLSearchParams({ page: String(pageNum), ...(query && { query }), ...(sort && { sort }) }).toString()}`}
                 className={`flex size-10 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                   pageNum === currentPage
                     ? "bg-primary-admin text-white"

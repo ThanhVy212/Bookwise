@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -30,7 +30,30 @@ const UserActions = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const roleMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isRoleMenuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (roleMenuRef.current && !roleMenuRef.current.contains(e.target as Node)) {
+        setIsRoleMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsRoleMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isRoleMenuOpen]);
 
   const handleRoleChange = async (newRole: "USER" | "ADMIN") => {
     if (newRole === currentRole) return;
@@ -120,7 +143,7 @@ const UserActions = ({
   }
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block" ref={roleMenuRef}>
       <button
         className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
           currentRole === "ADMIN"
@@ -128,6 +151,8 @@ const UserActions = ({
             : "bg-green-100 text-green-700 hover:bg-green-200"
         }`}
         disabled={isUpdating}
+        onClick={() => setIsRoleMenuOpen((prev) => !prev)}
+        aria-expanded={isRoleMenuOpen}
       >
         {currentRole}
         <Image
@@ -138,30 +163,32 @@ const UserActions = ({
         />
       </button>
 
-      <div className="absolute left-0 top-full z-10 mt-1 w-32 rounded-lg border border-gray-100 bg-white shadow-lg hidden group-hover:block">
-        <button
-          onClick={() => handleRoleChange("USER")}
-          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-            currentRole === "USER" ? "font-semibold" : ""
-          }`}
-        >
-          User
-          {currentRole === "USER" && (
-            <span className="ml-2 text-green-500">✓</span>
-          )}
-        </button>
-        <button
-          onClick={() => handleRoleChange("ADMIN")}
-          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-            currentRole === "ADMIN" ? "font-semibold" : ""
-          }`}
-        >
-          Admin
-          {currentRole === "ADMIN" && (
-            <span className="ml-2 text-green-500">✓</span>
-          )}
-        </button>
-      </div>
+      {isRoleMenuOpen && (
+        <div className="absolute left-0 top-full z-10 mt-1 w-32 rounded-lg border border-gray-100 bg-white shadow-lg">
+          <button
+            onClick={() => { handleRoleChange("USER"); setIsRoleMenuOpen(false); }}
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
+              currentRole === "USER" ? "font-semibold" : ""
+            }`}
+          >
+            User
+            {currentRole === "USER" && (
+              <span className="ml-2 text-green-500">✓</span>
+            )}
+          </button>
+          <button
+            onClick={() => { handleRoleChange("ADMIN"); setIsRoleMenuOpen(false); }}
+            className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
+              currentRole === "ADMIN" ? "font-semibold" : ""
+            }`}
+          >
+            Admin
+            {currentRole === "ADMIN" && (
+              <span className="ml-2 text-green-500">✓</span>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

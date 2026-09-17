@@ -36,7 +36,7 @@ const BorrowRequestsPage = async ({
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-dark-400">Borrow Book Requests</h2>
         <Link
-          href={`/admin/book-requests?sort=${nextSort}${query ? `&query=${query}` : ""}`}
+          href={`/admin/book-requests?sort=${nextSort}&page=1${query ? `&query=${query}` : ""}`}
           className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
         >
           <span>{sort === "oldest" ? "Oldest to Recent" : "Recent to Oldest"}</span>
@@ -190,7 +190,7 @@ const BorrowRequestsPage = async ({
             (pageNum) => (
               <a
                 key={pageNum}
-                href={`/admin/book-requests?page=${pageNum}${query ? `&query=${query}` : ""}`}
+                href={`/admin/book-requests?page=${pageNum}${sort ? `&sort=${sort}` : ""}${query ? `&query=${query}` : ""}`}
                 className={`flex size-10 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                   pageNum === currentPage
                     ? "bg-primary-admin text-white"

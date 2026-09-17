@@ -70,7 +70,7 @@ const AccountRequestActions = ({ userId }: AccountRequestActionsProps) => {
       <div className="flex items-center justify-end gap-2">
         <button
           onClick={() => setShowApproveDialog(true)}
-          className="confirm-trigger confirm-approve px-4 py-2 cursor-pointer"
+          className="confirm-trigger confirm-approve px-3 py-1.5 rounded-lg text-sm cursor-pointer"
         >
           Approve Account
         </button>

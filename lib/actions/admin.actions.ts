@@ -20,6 +20,16 @@ export const getAllUsers = async ({
       return { success: false, error: "Unauthorized" };
     }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const conditions = [];
 
     if (query && query.trim()) {
@@ -108,6 +118,16 @@ export const updateUserRole = async ({
       return { success: false, error: "Unauthorized" };
     }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
     await db.update(users).set({ role }).where(eq(users.id, userId));
 
     return { success: true };
@@ -124,10 +144,21 @@ export const deleteUser = async (userId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Delete borrow records first
-    await db.delete(borrowRecords).where(eq(borrowRecords.userId, userId));
-    // Delete user
-    await db.delete(users).where(eq(users.id, userId));
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Delete borrow records and user in a single transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(borrowRecords).where(eq(borrowRecords.userId, userId));
+      await tx.delete(users).where(eq(users.id, userId));
+    });
 
     return { success: true };
   } catch (error) {
@@ -140,6 +171,16 @@ export const getAccountRequests = async () => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
       return { success: false, error: "Unauthorized" };
     }
 
@@ -178,6 +219,16 @@ export const approveAccountRequest = async (userId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
     await db
       .update(users)
       .set({ status: "APPROVED" })
@@ -194,6 +245,16 @@ export const rejectAccountRequest = async (userId: string) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
       return { success: false, error: "Unauthorized" };
     }
 
@@ -223,6 +284,16 @@ export const getAllBorrowRecords = async ({
   try {
     const session = await auth();
     if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
       return { success: false, error: "Unauthorized" };
     }
 
@@ -324,6 +395,16 @@ export const updateBorrowRecordStatus = async ({
       return { success: false, error: "Unauthorized" };
     }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const updateData: any = { status };
 
     if (status === "RETURNED") {
@@ -376,6 +457,16 @@ export const getAdminStats = async () => {
       return { success: false, error: "Unauthorized" };
     }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const [totalBooksResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(books);
@@ -413,6 +504,16 @@ export const getRecentBorrowRequests = async (limit = 3) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
       return { success: false, error: "Unauthorized" };
     }
 
@@ -462,6 +563,16 @@ export const getRecentlyAddedBooks = async (limit = 6) => {
       return { success: false, error: "Unauthorized" };
     }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
     const recentBooks = await db
       .select()
       .from(books)
@@ -485,10 +596,21 @@ export const deleteBook = async (bookId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Delete borrow records first
-    await db.delete(borrowRecords).where(eq(borrowRecords.bookId, bookId));
-    // Delete book
-    await db.delete(books).where(eq(books.id, bookId));
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Delete borrow records and book in a single transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(borrowRecords).where(eq(borrowRecords.bookId, bookId));
+      await tx.delete(books).where(eq(books.id, bookId));
+    });
 
     return { success: true };
   } catch (error) {

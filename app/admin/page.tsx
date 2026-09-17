@@ -9,7 +9,7 @@ import {
 } from "@/lib/actions/admin.actions";
 import { getInitials } from "@/lib/utils";
 import BookCover from "@/components/BookCover";
-import { Calendar, Eye, Plus, ArrowDown, ArrowUp } from "lucide-react";
+import { Calendar, Eye, Plus } from "lucide-react";
 
 const AdminDashboard = async () => {
   const stats = await getAdminStats();
@@ -29,9 +29,6 @@ const AdminDashboard = async () => {
             <span className="text-sm font-medium text-slate-500">
               Borrowed Books
             </span>
-            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-rose-500">
-              <ArrowDown className="size-3 stroke-[3]" /> 2
-            </span>
           </div>
           <p className="mt-4 text-3xl font-bold text-dark-400">
             {statsData?.borrowedBooks || 0}
@@ -44,9 +41,6 @@ const AdminDashboard = async () => {
             <span className="text-sm font-medium text-slate-500">
               Total Users
             </span>
-            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-              <ArrowUp className="size-3 stroke-[3]" /> 4
-            </span>
           </div>
           <p className="mt-4 text-3xl font-bold text-dark-400">
             {statsData?.totalUsers || 0}
@@ -58,9 +52,6 @@ const AdminDashboard = async () => {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-slate-500">
               Total Books
-            </span>
-            <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-              <ArrowUp className="size-3 stroke-[3]" /> 2
             </span>
           </div>
           <p className="mt-4 text-3xl font-bold text-dark-400">

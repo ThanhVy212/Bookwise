@@ -20,6 +20,9 @@ const BookCover = ({
   coverColor = "#012B48",
   coverUrl = "https://placeholder.co/400x600.png",
 }: BookCoverProps) => {
+  const finalCoverUrl = coverUrl || "https://placeholder.co/400x600.png";
+  const finalCoverColor = coverColor || "#012B48";
+
   return (
     <ImageKitProvider urlEndpoint={config.env.imagekit.urlEndpoint}>
       <div
@@ -29,13 +32,13 @@ const BookCover = ({
           className,
         )}
       >
-        <BookCoverSvg coverColor={coverColor} />
+        <BookCoverSvg coverColor={finalCoverColor} />
         <div
           className="absolute z-10"
           style={{ left: "12%", width: "87.5%", height: "88%" }}
         >
           <ImageKitImage
-            src={coverUrl}
+            src={finalCoverUrl}
             alt="Book cover"
             fill
             className="rounded-sm object-fill"

@@ -12,3 +12,12 @@ export const getInitials = (name: string): string =>
     .join(" ")
     .toUpperCase()
     .slice(0, 2);
+
+const IMAGEKIT_URL_ENDPOINT =
+  process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT || "";
+
+export const getImageKitUrl = (filePath: string): string => {
+  if (!filePath) return "";
+  if (filePath.startsWith("http")) return filePath;
+  return `${IMAGEKIT_URL_ENDPOINT}${filePath}`;
+};

@@ -252,6 +252,8 @@ const FileUpload = ({
             src={file.filePath}
             width={500}
             height={300}
+            className="rounded-lg object-contain max-h-[300px] mt-3"
+            style={{ width: "auto", height: "auto" }}
           />
         )}
 

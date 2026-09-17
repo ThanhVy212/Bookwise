@@ -19,14 +19,15 @@ import { Textarea } from "@/components/ui/textarea";
 import FileUpload from "@/components/FileUpload";
 import ColorPicker from "@/components/admin/ColorPicker";
 import { BookFormValues, bookSchema } from "@/lib/validations";
-import { createBook } from "@/lib/actions/book.actions";
+import { createBook, updateBook } from "@/lib/actions/book.actions";
 import { toast } from "@/components/ui/toast";
 
 interface Props extends Partial<BookFormValues> {
   type?: "create" | "update";
+  bookId?: string;
 }
 
-const BookForm = ({ type = "create", ...book }: Props) => {
+const BookForm = ({ type = "create", bookId, ...book }: Props) => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -57,7 +58,12 @@ const BookForm = ({ type = "create", ...book }: Props) => {
     });
 
     try {
-      const result = await createBook(values);
+      let result;
+      if (type === "update" && bookId) {
+        result = await updateBook(bookId, values);
+      } else {
+        result = await createBook(values);
+      }
 
       if (result.success) {
         toast.update(loadingToast, {
@@ -69,7 +75,8 @@ const BookForm = ({ type = "create", ...book }: Props) => {
               : "Book updated successfully.",
         });
 
-        router.push("/admin/books");
+        router.push(type === "update" && bookId ? `/admin/books/${bookId}` : "/admin/books");
+        router.refresh();
       } else {
         toast.update(loadingToast, {
           type: "error",

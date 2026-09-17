@@ -32,13 +32,13 @@ export const getBookById = async (bookId: string) => {
   }
 };
 
-
 export const createBook = async (params: BookFormValues) => {
   try {
     const newBook = await db
       .insert(books)
       .values({
         ...params,
+        description: params.description ?? "",
         availableCopies: params.totalCopies,
         rating: params.rating ?? 4,
       })
@@ -129,11 +129,7 @@ export const checkBookBorrowEligibility = async ({
   }
 };
 
-export const borrowBook = async ({
-  bookId,
-}: {
-  bookId: string;
-}) => {
+export const borrowBook = async ({ bookId }: { bookId: string }) => {
   try {
     const session = await auth();
 
@@ -291,7 +287,7 @@ export const getSimilarBooks = async ({
   limit?: number;
 }) => {
   try {
-    let similarBooks = [];
+    let similarBooks: Book[] = [];
 
     if (genre) {
       similarBooks = await db
@@ -430,4 +426,77 @@ export const getAllBooks = async ({
   }
 };
 
+export const updateBook = async (
+  bookId: string,
+  params: Partial<BookFormValues>,
+) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, message: "Unauthorized" };
+    }
 
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const [existingBook] = await db
+      .select()
+      .from(books)
+      .where(eq(books.id, bookId))
+      .limit(1);
+
+    if (!existingBook) {
+      return { success: false, message: "Book not found" };
+    }
+
+    let availableCopies = existingBook.availableCopies;
+    if (params.totalCopies !== undefined) {
+      const [{ count: activeBorrowCount }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(borrowRecords)
+        .where(
+          and(
+            eq(borrowRecords.bookId, bookId),
+            eq(borrowRecords.status, "BORROWED"),
+          ),
+        );
+
+      if (params.totalCopies < activeBorrowCount) {
+        return {
+          success: false,
+          message: `Cannot set total copies below the number of active borrows (${activeBorrowCount})`,
+        };
+      }
+
+      const copyDiff = params.totalCopies - existingBook.totalCopies;
+      availableCopies = Math.max(0, existingBook.availableCopies + copyDiff);
+    }
+
+    const [updatedBook] = await db
+      .update(books)
+      .set({
+        ...params,
+        availableCopies,
+      })
+      .where(eq(books.id, bookId))
+      .returning();
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(updatedBook)),
+    };
+  } catch (error) {
+    console.error("Error updating book:", error);
+    return {
+      success: false,
+      message: "An error occurred while updating the book",
+    };
+  }
+};

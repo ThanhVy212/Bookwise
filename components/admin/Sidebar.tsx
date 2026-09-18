@@ -3,13 +3,20 @@
 import Image from "next/image";
 import { adminSideBarLinks } from "@/constants";
 import Link from "next/link";
-import { cn, getInitials } from "@/lib/utils";
+import { cn, getInitials, getImageKitUrl } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Session } from "next-auth";
 
-const Sidebar = ({ session }: { session: Session }) => {
+const Sidebar = ({
+  session,
+  avatar,
+}: {
+  session: Session;
+  avatar?: string | null;
+}) => {
   const pathname = usePathname();
+  const avatarUrl = avatar ? getImageKitUrl(avatar) : null;
 
   return (
     <div className="admin-sidebar">
@@ -61,7 +68,14 @@ const Sidebar = ({ session }: { session: Session }) => {
       </div>
 
       <div className="user">
-        <Avatar>
+        <Avatar className="size-10">
+          {avatarUrl && (
+            <img
+              src={avatarUrl}
+              alt={session?.user?.name || "Admin"}
+              className="size-full rounded-full object-cover"
+            />
+          )}
           <AvatarFallback className="bg-amber-100">
             {getInitials(session?.user?.name || "IN")}
           </AvatarFallback>

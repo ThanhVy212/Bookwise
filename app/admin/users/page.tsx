@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import { getAllUsers } from "@/lib/actions/admin.actions";
-import { getInitials } from "@/lib/utils";
+import { getInitials, getImageKitUrl } from "@/lib/utils";
 import UserActions from "@/components/admin/UserActions";
 import ViewIdCardModal from "@/components/admin/ViewIdCardModal";
 
@@ -76,8 +76,18 @@ const UsersPage = async ({
               >
                 <td className="py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-dark-400">
-                      {getInitials(user.fullName)}
+                    <div className="relative size-10 shrink-0 overflow-hidden rounded-full bg-amber-100">
+                      {user.avatarUrl ? (
+                        <img
+                          src={getImageKitUrl(user.avatarUrl)}
+                          alt={user.fullName}
+                          className="size-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex size-full items-center justify-center text-sm font-semibold text-dark-400">
+                          {getInitials(user.fullName)}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <p className="font-medium text-dark-400">

@@ -12,6 +12,12 @@ const Layout = async ({ children }: { children: ReactNode }) => {
 
   if (!session) redirect("/sign-in");
 
+  const [userData] = await db
+    .select({ avatarUrl: users.avatarUrl })
+    .from(users)
+    .where(eq(users.id, session.user.id))
+    .limit(1);
+
   after(async () => {
     if (!session?.user?.id) return;
 
@@ -33,7 +39,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
   return (
     <main className="root-container">
       <div className="mx-auto max-w-7xl w-full">
-        <Header session={session} />
+        <Header session={session} avatar={userData?.avatarUrl} />
 
         <div className="mt-16 pb-20">{children}</div>
       </div>

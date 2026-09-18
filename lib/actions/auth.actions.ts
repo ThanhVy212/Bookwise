@@ -134,6 +134,7 @@ export const getUserById = async (userId: string) => {
         email: users.email,
         universityId: users.universityId,
         universityCard: users.universityCard,
+        avatarUrl: users.avatarUrl,
         status: users.status,
         role: users.role,
         lastActivityDate: users.lastActivityDate,
@@ -156,6 +157,39 @@ export const getUserById = async (userId: string) => {
     return {
       success: false,
       error: "An error occurred while fetching the user",
+    };
+  }
+};
+
+export const updateUserAvatar = async ({
+  userId,
+  avatarUrl,
+}: {
+  userId: string;
+  avatarUrl: string;
+}) => {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (session.user.id !== userId) {
+      return { success: false, error: "Forbidden" };
+    }
+
+    await db
+      .update(users)
+      .set({ avatarUrl })
+      .where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating avatar:", error);
+    return {
+      success: false,
+      error: "An error occurred while updating the avatar",
     };
   }
 };

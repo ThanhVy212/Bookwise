@@ -12,18 +12,17 @@ const Layout = async ({ children }: { children: ReactNode }) => {
 
   if (!session?.user?.id) redirect("/sign-in");
 
-  const isAdmin = await db
-    .select({ isAdmin: users.role })
+  const [userData] = await db
+    .select({ avatarUrl: users.avatarUrl, role: users.role })
     .from(users)
     .where(eq(users.id, session.user.id))
-    .limit(1)
-    .then((res) => res[0]?.isAdmin === "ADMIN");
+    .limit(1);
 
-  if (!isAdmin) redirect("/");
+  if (userData?.role !== "ADMIN") redirect("/");
 
   return (
     <main className="flex min-h-screen w-full flex-row">
-      <Sidebar session={session} />
+      <Sidebar session={session} avatar={userData?.avatarUrl} />
 
       <div className="admin-container">
         <Header session={session} />

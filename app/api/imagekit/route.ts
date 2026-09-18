@@ -11,6 +11,7 @@ const ALLOWED_FOLDERS = [
   "books/covers",
   "books/videos",
   "books",
+  "avatars",
 ];
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const ALLOWED_MIME_PREFIXES = ["image/", "video/"];

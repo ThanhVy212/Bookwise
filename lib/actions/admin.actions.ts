@@ -68,6 +68,7 @@ export const getAllUsers = async ({
         email: users.email,
         universityId: users.universityId,
         universityCard: users.universityCard,
+        avatarUrl: users.avatarUrl,
         status: users.status,
         role: users.role,
         createdAt: users.createdAt,
@@ -198,6 +199,7 @@ export const getAccountRequests = async () => {
         email: users.email,
         universityId: users.universityId,
         universityCard: users.universityCard,
+        avatarUrl: users.avatarUrl,
         status: users.status,
         createdAt: users.createdAt,
       })

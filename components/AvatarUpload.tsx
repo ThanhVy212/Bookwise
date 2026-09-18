@@ -7,7 +7,7 @@ import {
   upload,
   Image as ImageKitImage,
 } from "@imagekit/next";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials, cn, getImageKitUrl } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
 import config from "@/lib/config";
@@ -132,10 +132,9 @@ const AvatarUpload = ({
 
         <Avatar className={cn(sizeClasses[size], "ring-2 ring-primary/30 shadow-md")}>
           {currentAvatar && (
-            <img
+            <AvatarImage
               src={getImageKitUrl(currentAvatar)}
               alt={fullName}
-              className="size-full rounded-full object-cover"
             />
           )}
           <AvatarFallback

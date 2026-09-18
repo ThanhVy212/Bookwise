@@ -5,7 +5,7 @@ import { adminSideBarLinks } from "@/constants";
 import Link from "next/link";
 import { cn, getInitials, getImageKitUrl } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Session } from "next-auth";
 
 const Sidebar = ({
@@ -70,11 +70,7 @@ const Sidebar = ({
       <div className="user">
         <Avatar className="size-10">
           {avatarUrl && (
-            <img
-              src={avatarUrl}
-              alt={session?.user?.name || "Admin"}
-              className="size-full rounded-full object-cover"
-            />
+            <AvatarImage src={avatarUrl} alt={session?.user?.name || "Admin"} />
           )}
           <AvatarFallback className="bg-amber-100">
             {getInitials(session?.user?.name || "IN")}

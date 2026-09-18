@@ -4,7 +4,7 @@ import Link from "next/link";
 import { cn, getInitials, getImageKitUrl } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
 
@@ -58,11 +58,7 @@ const Header = ({
           <Link href="/my-profile" className="flex items-center gap-2.5 group">
             <Avatar className="size-9 ring-1 ring-light-100/20">
               {avatarUrl && (
-                <img
-                  src={avatarUrl}
-                  alt={session?.user?.name || "User"}
-                  className="size-full rounded-full object-cover"
-                />
+                <AvatarImage src={avatarUrl} alt={session?.user?.name || "User"} />
               )}
               <AvatarFallback className="bg-light-100 text-dark-100 font-semibold text-xs">
                 {getInitials(session?.user?.name || "IN")}

@@ -1,7 +1,7 @@
 import React from "react";
 import Image from "next/image";
 import { getAccountRequests } from "@/lib/actions/admin.actions";
-import { getInitials } from "@/lib/utils";
+import { getInitials, getImageKitUrl } from "@/lib/utils";
 import AccountRequestActions from "@/components/admin/AccountRequestActions";
 import ViewIdCardModal from "@/components/admin/ViewIdCardModal";
 
@@ -62,9 +62,19 @@ const AccountRequestsPage = async () => {
               >
                 <td className="py-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-dark-400">
-                      {getInitials(user.fullName)}
-                    </div>
+                    {user.avatarUrl ? (
+                      <Image
+                        src={getImageKitUrl(user.avatarUrl)}
+                        alt={user.fullName}
+                        width={40}
+                        height={40}
+                        className="size-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-dark-400">
+                        {getInitials(user.fullName)}
+                      </div>
+                    )}
                     <div>
                       <p className="font-medium text-dark-400">
                         {user.fullName}

@@ -161,6 +161,45 @@ export const getUserById = async (userId: string) => {
   }
 };
 
+export const resendAccountRequest = async () => {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const userId = session.user.id;
+
+    const [user] = await db
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    if (user.status !== "REJECTED") {
+      return { success: false, error: "Only rejected accounts can resend requests" };
+    }
+
+    await db
+      .update(users)
+      .set({ status: "PENDING" })
+      .where(eq(users.id, userId));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error resending account request:", error);
+    return {
+      success: false,
+      error: "An error occurred while resending the account request",
+    };
+  }
+};
+
 export const updateUserAvatar = async ({
   userId,
   avatarUrl,

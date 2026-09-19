@@ -46,7 +46,9 @@ const AdminBookDetailsPage = async ({
           <div
             className="flex items-center justify-center rounded-2xl p-8 max-md:mx-auto max-w-xs shrink-0"
             style={{
-              backgroundColor: book.coverColor ? `${book.coverColor}18` : "#f3f4f6",
+              backgroundColor: book.coverColor
+                ? `${book.coverColor}18`
+                : "#f3f4f6",
             }}
           >
             <BookCover
@@ -96,20 +98,27 @@ const AdminBookDetailsPage = async ({
         <div className="mt-12 grid grid-cols-1 gap-10 lg:grid-cols-2">
           {/* Summary / Description */}
           <div>
-            <h2 className="text-lg font-bold text-dark-400">Summary</h2>
-            <div className="mt-4 space-y-4 text-sm sm:text-base leading-relaxed text-slate-600 text-justify">
-              {book.summary ? (
-                <p>{book.summary}</p>
-              ) : null}
+            <h2 className="text-lg font-bold text-dark-400">Description</h2>
+            <div className="mt-4 space-y-4 text-sm sm:text-base leading-relaxed text-slate-600 text-justify pb-10">
               {book.description && book.description !== book.summary ? (
                 <p>{book.description}</p>
               ) : null}
-              {!book.summary && !book.description && (
-                <p className="text-slate-400 italic">No summary available for this book.</p>
+              {!book.description && (
+                <p className="text-slate-400 italic">
+                  No description available for this book.
+                </p>
+              )}
+            </div>
+            <h2 className="text-lg font-bold text-dark-400">Summary</h2>
+            <div className="mt-4 space-y-4 text-sm sm:text-base leading-relaxed text-slate-600 text-justify">
+              {book.summary ? <p>{book.summary}</p> : null}
+              {!book.summary && (
+                <p className="text-slate-400 italic">
+                  No summary available for this book.
+                </p>
               )}
             </div>
           </div>
-
           {/* Video */}
           <div>
             <h2 className="text-lg font-bold text-dark-400">Video</h2>

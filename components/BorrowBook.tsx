@@ -10,16 +10,36 @@ interface BorrowBookProps {
   bookId: string;
   userId?: string;
   alreadyBorrowed?: boolean;
+  userStatus?: string | null;
 }
 
-const BorrowBook = ({ bookId, userId, alreadyBorrowed = false }: BorrowBookProps) => {
+const BorrowBook = ({ bookId, userId, alreadyBorrowed = false, userStatus }: BorrowBookProps) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  const isAccountRestricted = userStatus === "PENDING" || userStatus === "REJECTED";
+
+  const getButtonText = () => {
+    if (alreadyBorrowed) return "BORROWED";
+    if (loading) return "PROCESSING...";
+    if (userStatus === "PENDING") return "ACCOUNT PENDING APPROVAL";
+    if (userStatus === "REJECTED") return "ACCOUNT REJECTED";
+    return "BORROW BOOK REQUEST";
+  };
 
   const handleBorrowBook = async () => {
     if (!userId) {
       toast.error("Please sign in to borrow books");
       router.push("/sign-in");
+      return;
+    }
+
+    if (isAccountRestricted) {
+      if (userStatus === "PENDING") {
+        toast.error("Your account is pending approval. Please wait for admin approval before borrowing books.");
+      } else {
+        toast.error("Your account registration was rejected. Please contact admin for assistance.");
+      }
       return;
     }
 
@@ -46,12 +66,10 @@ const BorrowBook = ({ bookId, userId, alreadyBorrowed = false }: BorrowBookProps
       type="button"
       className="book-overview_btn"
       onClick={handleBorrowBook}
-      disabled={!userId || loading || alreadyBorrowed}
+      disabled={!userId || loading || alreadyBorrowed || isAccountRestricted}
     >
       <Image src="/icons/book.svg" alt="book" width={22} height={22} />
-      <span>
-        {alreadyBorrowed ? "BORROWED" : loading ? "PROCESSING..." : "BORROW BOOK REQUEST"}
-      </span>
+      <span>{getButtonText()}</span>
     </button>
   );
 };

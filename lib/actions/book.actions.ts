@@ -77,6 +77,35 @@ export const checkBookBorrowEligibility = async ({
 
     const userId = session.user.id;
 
+    const [user] = await db
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return {
+        isEligible: false,
+        message: "User not found",
+      };
+    }
+
+    if (user.status === "PENDING") {
+      return {
+        isEligible: false,
+        message: "Your account is pending approval. Please wait for admin approval before borrowing books.",
+        status: "PENDING" as const,
+      };
+    }
+
+    if (user.status === "REJECTED") {
+      return {
+        isEligible: false,
+        message: "Your account registration was rejected. Please contact admin for assistance.",
+        status: "REJECTED" as const,
+      };
+    }
+
     const [book] = await db
       .select()
       .from(books)
@@ -143,6 +172,33 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
     }
 
     const userId = session.user.id;
+
+    const [user] = await db
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return {
+        success: false,
+        error: "User not found",
+      };
+    }
+
+    if (user.status === "PENDING") {
+      return {
+        success: false,
+        error: "Your account is pending approval. Please wait for admin approval before borrowing books.",
+      };
+    }
+
+    if (user.status === "REJECTED") {
+      return {
+        success: false,
+        error: "Your account registration was rejected. Please contact admin for assistance.",
+      };
+    }
 
     const [book] = await db
       .select()

@@ -2,7 +2,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getAllBorrowRecords } from "@/lib/actions/admin.actions";
-import { getInitials } from "@/lib/utils";
+import { getInitials, getImageKitUrl } from "@/lib/utils";
 import BorrowStatusDropdown from "@/components/admin/BorrowStatusDropdown";
 import BookReceiptModal from "@/components/admin/BookReceiptModalAdmin";
 import BookCover from "@/components/BookCover";
@@ -108,9 +108,19 @@ const BorrowRequestsPage = async ({
                   </td>
                   <td className="py-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-900">
-                        {getInitials(record.user.fullName)}
-                      </div>
+                      {record.user.avatarUrl ? (
+                        <Image
+                          src={getImageKitUrl(record.user.avatarUrl)}
+                          alt={record.user.fullName}
+                          width={36}
+                          height={36}
+                          className="size-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-9 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-900">
+                          {getInitials(record.user.fullName)}
+                        </div>
+                      )}
                       <div>
                         <p className="font-semibold text-dark-400 text-sm">
                           {record.user.fullName}

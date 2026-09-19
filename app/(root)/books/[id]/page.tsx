@@ -36,9 +36,13 @@ const Page = async ({ params }: Props) => {
   const similarBooks: Book[] = similarResult.data || [];
 
   let alreadyBorrowed = false;
+  let userStatus: string | null = null;
   if (session?.user?.id) {
     const eligibility = await checkBookBorrowEligibility({ bookId: id });
     alreadyBorrowed = eligibility.alreadyBorrowed === true;
+    if (eligibility.status) {
+      userStatus = eligibility.status;
+    }
   }
 
   return (
@@ -86,6 +90,7 @@ const Page = async ({ params }: Props) => {
               bookId={book.id}
               userId={session?.user?.id as string}
               alreadyBorrowed={alreadyBorrowed}
+              userStatus={userStatus}
             />
           </div>
         </div>

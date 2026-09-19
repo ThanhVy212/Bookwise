@@ -5,6 +5,7 @@ import { getUserById } from "@/lib/actions/auth.actions";
 import { getUserBorrowedBooks } from "@/lib/actions/book.actions";
 import StudentCard from "@/components/StudentCard";
 import BorrowedBookCard from "@/components/BorrowedBookCard";
+import ResendAccountRequest from "@/components/ResendAccountRequest";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -31,8 +32,9 @@ const Page = async () => {
   return (
     <div className="flex flex-col lg:flex-row items-start gap-10 lg:gap-14">
       {/* Left Column: Student Profile Badge */}
-      <div className="w-full lg:w-auto shrink-0 flex justify-center lg:justify-start">
+      <div className="w-full lg:w-auto shrink-0 flex flex-col items-center lg:items-start">
         <StudentCard user={user} />
+        {user.status === "REJECTED" && <ResendAccountRequest />}
       </div>
 
       {/* Right Column: Borrowed Books */}

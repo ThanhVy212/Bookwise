@@ -390,6 +390,7 @@ export const getAllBorrowRecords = async ({
           fullName: users.fullName,
           email: users.email,
           universityId: users.universityId,
+          avatarUrl: users.avatarUrl,
         },
       })
       .from(borrowRecords)
@@ -588,6 +589,7 @@ export const getRecentBorrowRequests = async (limit = 3) => {
           id: users.id,
           fullName: users.fullName,
           email: users.email,
+          avatarUrl: users.avatarUrl,
         },
       })
       .from(borrowRecords)

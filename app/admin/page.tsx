@@ -6,23 +6,28 @@ import {
   getRecentBorrowRequests,
   getRecentlyAddedBooks,
   getAccountRequests,
+  getTopWishlistedBooks,
 } from "@/lib/actions/admin.actions";
 import { getInitials } from "@/lib/utils";
 import BookCover from "@/components/BookCover";
-import { Calendar, Eye, Plus } from "lucide-react";
+import { Calendar, Eye, Heart, Plus, Sparkles } from "lucide-react";
 
 const AdminDashboard = async () => {
-  const stats = await getAdminStats();
-  const borrowRequests = await getRecentBorrowRequests(3);
-  const recentBooks = await getRecentlyAddedBooks(6);
-  const accountRequests = await getAccountRequests();
+  const [stats, borrowRequests, recentBooks, accountRequests, topWishlisted] =
+    await Promise.all([
+      getAdminStats(),
+      getRecentBorrowRequests(3),
+      getRecentlyAddedBooks(6),
+      getAccountRequests(),
+      getTopWishlistedBooks(4),
+    ]);
 
   const statsData = stats.success ? stats.data : null;
 
   return (
     <div className="w-full space-y-8">
-      {/* 3 Stats Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      {/* 4 Stats Cards */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Borrowed Books */}
         <div className="rounded-2xl bg-white p-6 shadow-2xs">
           <div className="flex items-center justify-between">
@@ -58,7 +63,21 @@ const AdminDashboard = async () => {
             {statsData?.totalBooks || 0}
           </p>
         </div>
+
+        {/* Total Wishlists / Student Interest */}
+        <div className="rounded-2xl bg-white p-6 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-500">
+              Saved in Wishlist
+            </span>
+            <Heart className="size-4 text-rose-500 fill-rose-500" />
+          </div>
+          <p className="mt-4 text-3xl font-bold text-rose-600">
+            {statsData?.totalWishlists || 0}
+          </p>
+        </div>
       </div>
+
 
       {/* Middle Section: Borrow Requests + Recently Added Books */}
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
@@ -199,6 +218,67 @@ const AdminDashboard = async () => {
         </div>
       </div>
 
+      {/* Middle-Bottom Section: Top Wishlisted Books (Student Demand) */}
+      {topWishlisted.success && topWishlisted.data.length > 0 && (
+        <div className="rounded-2xl bg-white p-6 sm:p-7 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-rose-50 text-rose-500">
+                <Heart className="size-4 fill-rose-500 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-dark-400">
+                  Most Wishlisted Books
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Books with highest student interest & bookmark rate
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/admin/books"
+              className="rounded-lg bg-light-300 px-3 py-1.5 text-xs font-semibold text-primary-admin transition-colors hover:bg-light-400"
+            >
+              View catalog
+            </Link>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {topWishlisted.data.map((book: any) => (
+              <Link
+                key={book.id}
+                href={`/admin/books/${book.id}`}
+                className="flex items-center gap-3.5 rounded-xl bg-light-300 p-3.5 transition-all hover:bg-light-400/70 hover:shadow-xs group"
+              >
+                <BookCover
+                  variant="extraSmall"
+                  coverColor={book.coverColor}
+                  coverUrl={book.coverUrl}
+                />
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-dark-400 group-hover:text-primary-admin transition-colors">
+                    {book.title}
+                  </p>
+                  <p className="truncate text-xs text-slate-500 mt-0.5">
+                    {book.author}
+                  </p>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                      <Heart className="size-3 fill-rose-500" />
+                      {book.wishlistCount} saves
+                    </span>
+                    <span className="text-[11px] text-slate-400">
+                      {book.availableCopies}/{book.totalCopies} left
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Bottom Section: Account Requests */}
       <div className="rounded-2xl bg-white p-6 sm:p-7 shadow-2xs">
         <div className="flex items-center justify-between">
@@ -260,3 +340,4 @@ const AdminDashboard = async () => {
 };
 
 export default AdminDashboard;
+

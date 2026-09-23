@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/database/drizzle";
-import { books, borrowRecords, users } from "@/database/schema";
+import { books, borrowRecords, users, wishlists } from "@/database/schema";
 import { auth } from "@/auth";
 import { and, asc, desc, eq, ilike, or, sql, count } from "drizzle-orm";
 import { sendEmail } from "@/lib/workflow";
@@ -11,6 +11,7 @@ import {
   returnConfirmationEmail,
   receiptEmail,
 } from "@/lib/email-templates";
+
 
 export const getAllUsers = async ({
   query = "",
@@ -449,56 +450,66 @@ export const updateBorrowRecordStatus = async ({
       updateData.returnDate = new Date();
     }
 
-    // Get the record first to update available copies
-    const [record] = await db
-      .select()
-      .from(borrowRecords)
-      .where(eq(borrowRecords.id, recordId))
-      .limit(1);
-
-    if (!record) {
-      return { success: false, error: "Record not found" };
-    }
-
-    await db
-      .update(borrowRecords)
-      .set(updateData)
-      .where(eq(borrowRecords.id, recordId));
-
-    // If returning, increment available copies
-    if (status === "RETURNED") {
-      const [book] = await db
+    // Transaction for atomic update of borrow record and book inventory
+    const result = await db.transaction(async (tx) => {
+      const [record] = await tx
         .select()
-        .from(books)
-        .where(eq(books.id, record.bookId))
+        .from(borrowRecords)
+        .where(eq(borrowRecords.id, recordId))
         .limit(1);
 
-      if (book) {
-        await db
-          .update(books)
-          .set({ availableCopies: book.availableCopies + 1 })
-          .where(eq(books.id, record.bookId));
+      if (!record) {
+        throw new Error("RECORD_NOT_FOUND");
+      }
 
-        const [borrower] = await db
+      await tx
+        .update(borrowRecords)
+        .set(updateData)
+        .where(eq(borrowRecords.id, recordId));
+
+      let book = null;
+      let borrower = null;
+
+      // If returning, increment available copies atomically
+      if (status === "RETURNED" && record.status !== "RETURNED") {
+        const [updatedBook] = await tx
+          .update(books)
+          .set({ availableCopies: sql`${books.availableCopies} + 1` })
+          .where(eq(books.id, record.bookId))
+          .returning();
+
+        book = updatedBook;
+
+        const [user] = await tx
           .select({ email: users.email, fullName: users.fullName })
           .from(users)
           .where(eq(users.id, record.userId))
           .limit(1);
 
-        if (borrower) {
-          await sendEmail({
-            email: borrower.email,
-            subject: `Thank You for Returning ${book.title}!`,
-            message: returnConfirmationEmail(borrower.fullName, book.title),
-          }).catch(() => {});
-        }
+        borrower = user;
       }
+
+      return { record, book, borrower };
+    });
+
+    if (status === "RETURNED" && result.borrower && result.book) {
+      await sendEmail({
+        email: result.borrower.email,
+        subject: `Thank You for Returning ${result.book.title}!`,
+        message: returnConfirmationEmail(
+          result.borrower.fullName,
+          result.book.title,
+        ),
+      }).catch(() => {});
     }
 
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating borrow record:", error);
-    return { success: false, error: "Failed to update borrow record" };
+    return {
+      success: false,
+      error: error?.message || "Failed to update borrow record",
+    };
   }
 };
 
@@ -537,6 +548,10 @@ export const getAdminStats = async () => {
       .from(users)
       .where(eq(users.status, "PENDING"));
 
+    const [totalWishlistsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(wishlists);
+
     return {
       success: true,
       data: {
@@ -544,6 +559,7 @@ export const getAdminStats = async () => {
         totalUsers: Number(totalUsersResult?.count || 0),
         borrowedBooks: Number(borrowedBooksResult?.count || 0),
         pendingAccounts: Number(pendingAccountsResult?.count || 0),
+        totalWishlists: Number(totalWishlistsResult?.count || 0),
       },
     };
   } catch (error) {
@@ -551,6 +567,52 @@ export const getAdminStats = async () => {
     return { success: false, error: "Failed to fetch stats" };
   }
 };
+
+export const getTopWishlistedBooks = async (limit = 5) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized", data: [] };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized", data: [] };
+    }
+
+    const topBooks = await db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        genre: books.genre,
+        coverUrl: books.coverUrl,
+        coverColor: books.coverColor,
+        totalCopies: books.totalCopies,
+        availableCopies: books.availableCopies,
+        wishlistCount: sql<number>`count(${wishlists.id})::int`,
+      })
+      .from(books)
+      .innerJoin(wishlists, eq(books.id, wishlists.bookId))
+      .groupBy(books.id)
+      .orderBy(desc(sql`count(${wishlists.id})`))
+      .limit(limit);
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(topBooks)),
+    };
+  } catch (error) {
+    console.error("Error fetching top wishlisted books:", error);
+    return { success: false, error: "Failed to fetch top wishlisted books", data: [] };
+  }
+};
+
 
 export const getRecentBorrowRequests = async (limit = 3) => {
   try {

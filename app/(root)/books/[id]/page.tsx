@@ -3,10 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getBookById, getSimilarBooks, checkBookBorrowEligibility } from "@/lib/actions/book.actions";
+import { getBookById, getSimilarBooks, checkBookBorrowEligibility, checkIsBookWishlisted } from "@/lib/actions/book.actions";
 import BookCover from "@/components/BookCover";
 import BorrowBook from "@/components/BorrowBook";
 import BookVideo from "@/components/BookVideo";
+import WishlistButton from "@/components/WishlistButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -27,11 +28,16 @@ const Page = async ({ params }: Props) => {
 
   const book: Book = bookResult.data;
 
-  const similarResult = await getSimilarBooks({
-    currentBookId: id,
-    genre: book.genre,
-    limit: 6,
-  });
+  const [similarResult, wishlistStatus] = await Promise.all([
+    getSimilarBooks({
+      currentBookId: id,
+      genre: book.genre,
+      limit: 6,
+    }),
+    session?.user?.id ? checkIsBookWishlisted(id) : Promise.resolve({ isWishlisted: false }),
+  ]);
+
+  const isWishlisted = wishlistStatus.isWishlisted;
 
   const similarBooks: Book[] = similarResult.data || [];
 
@@ -85,15 +91,22 @@ const Page = async ({ params }: Props) => {
             {book.description}
           </p>
 
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-4">
             <BorrowBook
               bookId={book.id}
               userId={session?.user?.id as string}
               alreadyBorrowed={alreadyBorrowed}
               userStatus={userStatus}
             />
+
+            <WishlistButton
+              bookId={book.id}
+              initialIsWishlisted={isWishlisted}
+              variant="button"
+            />
           </div>
         </div>
+
 
 
         {/* 3D Book Cover */}

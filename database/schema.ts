@@ -25,7 +25,7 @@ export const BORROW_STATUS_ENUM = pgEnum("borrow_status", [
 export const users = pgTable(
   "users",
   {
-    id: uuid("id").notNull().primaryKey().defaultRandom().unique(),
+    id: uuid("id").notNull().primaryKey().defaultRandom(),
     fullName: varchar("full_name", { length: 255 }).notNull(),
     email: text("email").notNull(),
     universityId: integer("university_id").notNull().unique(),
@@ -43,7 +43,7 @@ export const users = pgTable(
 );
 
 export const books = pgTable("books", {
-  id: uuid("id").notNull().primaryKey().defaultRandom().unique(),
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
   title: varchar("title", { length: 255 }).notNull(),
   author: varchar("author", { length: 255 }).notNull(),
   genre: text("genre").notNull(),
@@ -59,7 +59,7 @@ export const books = pgTable("books", {
 });
 
 export const borrowRecords = pgTable("borrow_records", {
-  id: uuid("id").notNull().primaryKey().defaultRandom().unique(),
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
   userId: uuid("user_id")
     .references(() => users.id)
     .notNull(),
@@ -74,3 +74,20 @@ export const borrowRecords = pgTable("borrow_records", {
   status: BORROW_STATUS_ENUM("status").default("BORROWED").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+export const wishlists = pgTable(
+  "wishlists",
+  {
+    id: uuid("id").notNull().primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    bookId: uuid("book_id")
+      .references(() => books.id, { onDelete: "cascade" })
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [uniqueIndex("user_book_wishlist_idx").on(t.userId, t.bookId)],
+);
+
+

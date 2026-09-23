@@ -4,15 +4,21 @@ import { auth } from "@/auth";
 import { db } from "@/database/drizzle";
 import { books } from "@/database/schema";
 import { desc } from "drizzle-orm";
+import { getUserWishlistBookIds } from "@/lib/actions/book.actions";
 
 const Home = async () => {
   const session = await auth();
 
-  const lastestBooks = (await db
-    .select()
-    .from(books)
-    .limit(13)
-    .orderBy(desc(books.createdAt))) as Book[];
+  const [lastestBooks, wishlistResult] = await Promise.all([
+    db
+      .select()
+      .from(books)
+      .limit(13)
+      .orderBy(desc(books.createdAt)) as Promise<Book[]>,
+    session?.user?.id ? getUserWishlistBookIds() : Promise.resolve({ success: true, data: [] as string[] }),
+  ]);
+
+  const wishlistBookIds = wishlistResult.data || [];
 
   if (lastestBooks.length === 0) {
     return (
@@ -25,13 +31,20 @@ const Home = async () => {
     );
   }
 
+  const featuredBook = lastestBooks[0];
+
   return (
     <>
-      <BookOverview {...lastestBooks[0]} userId={session?.user?.id as string} />
+      <BookOverview
+        {...featuredBook}
+        userId={session?.user?.id as string}
+        isWishlisted={wishlistBookIds.includes(featuredBook.id)}
+      />
 
       <BookList
         title="Latest Books"
         books={lastestBooks.slice(1)}
+        wishlistBookIds={wishlistBookIds}
         className="mt-28"
       />
     </>
@@ -39,3 +52,4 @@ const Home = async () => {
 };
 
 export default Home;
+

@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/database/drizzle";
-import { books, borrowRecords, users } from "@/database/schema";
+import { books, borrowRecords, users, wishlists } from "@/database/schema";
 import { BookFormValues } from "@/lib/validations";
-import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, ne, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { sendEmail } from "@/lib/workflow";
 import { borrowConfirmationEmail, receiptEmail } from "@/lib/email-templates";
@@ -174,7 +174,11 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
     const userId = session.user.id;
 
     const [user] = await db
-      .select({ status: users.status })
+      .select({
+        status: users.status,
+        fullName: users.fullName,
+        email: users.email,
+      })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -200,75 +204,63 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
       };
     }
 
-    const [book] = await db
-      .select()
-      .from(books)
-      .where(eq(books.id, bookId))
-      .limit(1);
-
-    if (!book) {
-      return {
-        success: false,
-        error: "Book not found",
-      };
-    }
-
-    if (book.availableCopies <= 0) {
-      return {
-        success: false,
-        error: "Book is not available for borrowing",
-      };
-    }
-
-    const existingBorrow = await db
-      .select()
-      .from(borrowRecords)
-      .where(
-        and(
-          eq(borrowRecords.bookId, bookId),
-          eq(borrowRecords.userId, userId),
-          eq(borrowRecords.status, "BORROWED"),
-        ),
-      )
-      .limit(1);
-
-    if (existingBorrow.length > 0) {
-      return {
-        success: false,
-        error: "You have already borrowed this book",
-      };
-    }
-
     // Due date: 7 days from now formatted as YYYY-MM-DD
     const dueDateTime = new Date();
     dueDateTime.setDate(dueDateTime.getDate() + 7);
     const dueDate = dueDateTime.toISOString().slice(0, 10);
 
-    const [borrowRecord] = await db
-      .insert(borrowRecords)
-      .values({
-        userId,
-        bookId,
-        borrowDate: new Date(),
-        dueDate,
-        status: "BORROWED",
-      })
-      .returning();
+    // Database transaction to prevent race conditions
+    const txResult = await db.transaction(async (tx) => {
+      // 1. Check if user already has an active borrow of this book
+      const existingBorrow = await tx
+        .select()
+        .from(borrowRecords)
+        .where(
+          and(
+            eq(borrowRecords.bookId, bookId),
+            eq(borrowRecords.userId, userId),
+            eq(borrowRecords.status, "BORROWED"),
+          ),
+        )
+        .limit(1);
 
-    await db
-      .update(books)
-      .set({
-        availableCopies: book.availableCopies - 1,
-      })
-      .where(eq(books.id, bookId));
+      if (existingBorrow.length > 0) {
+        throw new Error("ALREADY_BORROWED");
+      }
 
-    const [borrower] = await db
-      .select({ email: users.email, fullName: users.fullName })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+      // 2. Decrement available copies atomically only if availableCopies > 0
+      const updatedBooks = await tx
+        .update(books)
+        .set({
+          availableCopies: sql`${books.availableCopies} - 1`,
+        })
+        .where(and(eq(books.id, bookId), gt(books.availableCopies, 0)))
+        .returning();
 
-    if (borrower) {
+      if (updatedBooks.length === 0) {
+        throw new Error("OUT_OF_COPIES");
+      }
+
+      const book = updatedBooks[0];
+
+      // 3. Create borrow record
+      const [borrowRecord] = await tx
+        .insert(borrowRecords)
+        .values({
+          userId,
+          bookId,
+          borrowDate: new Date(),
+          dueDate,
+          status: "BORROWED",
+        })
+        .returning();
+
+      return { borrowRecord, book };
+    });
+
+    const { borrowRecord, book } = txResult;
+
+    if (user.email) {
       const borrowDateStr = new Date().toLocaleDateString("en-US", {
         month: "short",
         day: "2-digit",
@@ -281,10 +273,10 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
       });
 
       await sendEmail({
-        email: borrower.email,
+        email: user.email,
         subject: `You've Borrowed ${book.title}!`,
         message: borrowConfirmationEmail(
-          borrower.fullName,
+          user.fullName,
           book.title,
           borrowDateStr,
           dueDateStr,
@@ -292,10 +284,10 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
       }).catch(() => {});
 
       await sendEmail({
-        email: borrower.email,
+        email: user.email,
         subject: `Your Receipt for ${book.title} is Ready!`,
         message: receiptEmail(
-          borrower.fullName,
+          user.fullName,
           book.title,
           book.author,
           book.genre,
@@ -310,14 +302,27 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
       success: true,
       data: JSON.parse(JSON.stringify(borrowRecord)),
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error borrowing book:", error);
+    if (error?.message === "ALREADY_BORROWED") {
+      return {
+        success: false,
+        error: "You have already borrowed this book",
+      };
+    }
+    if (error?.message === "OUT_OF_COPIES") {
+      return {
+        success: false,
+        error: "Book is not available for borrowing",
+      };
+    }
     return {
       success: false,
       error: "An error occurred while borrowing the book",
     };
   }
 };
+
 
 export const getUserBorrowedBooks = async (userId: string) => {
   try {
@@ -437,12 +442,14 @@ export const getAllBooks = async ({
   page = 1,
   limit = 12,
   sort = "latest",
+  availableOnly = false,
 }: {
   query?: string;
   genre?: string;
   page?: number;
   limit?: number;
   sort?: string;
+  availableOnly?: boolean;
 } = {}) => {
   try {
     const conditions = [];
@@ -461,6 +468,10 @@ export const getAllBooks = async ({
 
     if (genre && genre !== "all" && genre !== "All" && genre !== "Department") {
       conditions.push(eq(books.genre, genre));
+    }
+
+    if (availableOnly) {
+      conditions.push(gt(books.availableCopies, 0));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -482,12 +493,33 @@ export const getAllBooks = async ({
       orderByClause = desc(books.rating);
     } else if (sort === "available") {
       orderByClause = desc(books.availableCopies);
+    } else if (sort === "title_asc") {
+      orderByClause = asc(books.title);
+    } else if (sort === "title_desc") {
+      orderByClause = desc(books.title);
     } else {
       orderByClause = desc(books.createdAt);
     }
 
     const bookList = await db
-      .select()
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        genre: books.genre,
+        rating: books.rating,
+        coverUrl: books.coverUrl,
+        coverColor: books.coverColor,
+        description: books.description,
+        totalCopies: books.totalCopies,
+        availableCopies: books.availableCopies,
+        videoUrl: books.videoUrl,
+        summary: books.summary,
+        createdAt: books.createdAt,
+        wishlistCount: sql<number>`(
+          SELECT count(*)::int FROM ${wishlists} WHERE ${wishlists.bookId} = ${books.id}
+        )`,
+      })
       .from(books)
       .where(whereClause)
       .limit(limit)
@@ -506,7 +538,7 @@ export const getAllBooks = async ({
     return {
       success: true,
       data: {
-        books: JSON.parse(JSON.stringify(bookList)) as Book[],
+        books: JSON.parse(JSON.stringify(bookList)),
         totalBooks,
         totalPages,
         currentPage: page,
@@ -518,7 +550,7 @@ export const getAllBooks = async ({
     return {
       success: false,
       data: {
-        books: [] as Book[],
+        books: [],
         totalBooks: 0,
         totalPages: 1,
         currentPage: 1,
@@ -527,6 +559,124 @@ export const getAllBooks = async ({
     };
   }
 };
+
+// Wishlist Server Actions
+export const toggleWishlist = async ({ bookId }: { bookId: string }) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Please sign in to save books" };
+    }
+
+    const userId = session.user.id;
+
+    // Check if already wishlisted
+    const existing = await db
+      .select()
+      .from(wishlists)
+      .where(and(eq(wishlists.userId, userId), eq(wishlists.bookId, bookId)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .delete(wishlists)
+        .where(and(eq(wishlists.userId, userId), eq(wishlists.bookId, bookId)));
+      return { success: true, isWishlisted: false, message: "Removed from saved books" };
+    } else {
+      await db.insert(wishlists).values({ userId, bookId });
+      return { success: true, isWishlisted: true, message: "Saved to your reading list" };
+    }
+  } catch (error) {
+    console.error("Error toggling wishlist:", error);
+    return { success: false, error: "Failed to update wishlist" };
+  }
+};
+
+export const checkIsBookWishlisted = async (bookId: string) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { isWishlisted: false };
+    }
+
+    const [existing] = await db
+      .select()
+      .from(wishlists)
+      .where(
+        and(
+          eq(wishlists.userId, session.user.id),
+          eq(wishlists.bookId, bookId),
+        ),
+      )
+      .limit(1);
+
+    return { isWishlisted: !!existing };
+  } catch (error) {
+    console.error("Error checking wishlist status:", error);
+    return { isWishlisted: false };
+  }
+};
+
+export const getUserWishlistBookIds = async () => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: true, data: [] };
+    }
+
+    const items = await db
+      .select({ bookId: wishlists.bookId })
+      .from(wishlists)
+      .where(eq(wishlists.userId, session.user.id));
+
+    return {
+      success: true,
+      data: items.map((i) => i.bookId),
+    };
+  } catch (error) {
+    console.error("Error fetching wishlist IDs:", error);
+    return { success: false, data: [] };
+  }
+};
+
+export const getUserWishlist = async () => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized", data: [] };
+    }
+
+    const savedBooks = await db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        genre: books.genre,
+        rating: books.rating,
+        totalCopies: books.totalCopies,
+        availableCopies: books.availableCopies,
+        description: books.description,
+        coverColor: books.coverColor,
+        coverUrl: books.coverUrl,
+        videoUrl: books.videoUrl,
+        summary: books.summary,
+        savedAt: wishlists.createdAt,
+      })
+      .from(wishlists)
+      .innerJoin(books, eq(wishlists.bookId, books.id))
+      .where(eq(wishlists.userId, session.user.id))
+      .orderBy(desc(wishlists.createdAt));
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(savedBooks)),
+    };
+  } catch (error) {
+    console.error("Error fetching user wishlist:", error);
+    return { success: false, error: "Failed to fetch saved books", data: [] };
+  }
+};
+
 
 export const updateBook = async (
   bookId: string,

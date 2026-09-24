@@ -6,14 +6,23 @@ import { borrowBook } from "@/lib/actions/book.actions";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { cn } from "@/lib/utils";
+
 interface BorrowBookProps {
   bookId: string;
   userId?: string;
   alreadyBorrowed?: boolean;
   userStatus?: string | null;
+  className?: string;
 }
 
-const BorrowBook = ({ bookId, userId, alreadyBorrowed = false, userStatus }: BorrowBookProps) => {
+const BorrowBook = ({
+  bookId,
+  userId,
+  alreadyBorrowed = false,
+  userStatus,
+  className,
+}: BorrowBookProps) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -64,7 +73,7 @@ const BorrowBook = ({ bookId, userId, alreadyBorrowed = false, userStatus }: Bor
   return (
     <button
       type="button"
-      className="book-overview_btn"
+      className={cn("book-overview_btn !mt-0", className)}
       onClick={handleBorrowBook}
       disabled={!userId || loading || alreadyBorrowed || isAccountRestricted}
     >

@@ -8,6 +8,8 @@ import {
   pgEnum,
   timestamp,
   uniqueIndex,
+  boolean,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -47,7 +49,7 @@ export const books = pgTable("books", {
   title: varchar("title", { length: 255 }).notNull(),
   author: varchar("author", { length: 255 }).notNull(),
   genre: text("genre").notNull(),
-  rating: integer("rating").notNull(),
+  rating: integer("rating").notNull().default(4),
   coverUrl: text("cover_url").notNull(),
   coverColor: varchar("cover_color", { length: 7 }).notNull(),
   description: text("description").notNull(),
@@ -61,10 +63,10 @@ export const books = pgTable("books", {
 export const borrowRecords = pgTable("borrow_records", {
   id: uuid("id").notNull().primaryKey().defaultRandom(),
   userId: uuid("user_id")
-    .references(() => users.id)
+    .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
   bookId: uuid("book_id")
-    .references(() => books.id)
+    .references(() => books.id, { onDelete: "cascade" })
     .notNull(),
   borrowDate: timestamp("borrow_date", { withTimezone: true })
     .defaultNow()
@@ -72,6 +74,7 @@ export const borrowRecords = pgTable("borrow_records", {
   dueDate: date("due_date").notNull(),
   returnDate: date("return_date"),
   status: BORROW_STATUS_ENUM("status").default("BORROWED").notNull(),
+  renewCount: integer("renew_count").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -90,4 +93,36 @@ export const wishlists = pgTable(
   (t) => [uniqueIndex("user_book_wishlist_idx").on(t.userId, t.bookId)],
 );
 
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").notNull().primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    bookId: uuid("book_id")
+      .references(() => books.id, { onDelete: "cascade" })
+      .notNull(),
+    rating: integer("rating").notNull(),
+    comment: text("comment").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("user_book_review_idx").on(t.userId, t.bookId),
+    check("reviews_rating_range", sql`${t.rating} >= 1 AND ${t.rating} <= 5`),
+  ],
+);
+
+export const notifications = pgTable("notifications", {
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  type: varchar("type", { length: 50 }).notNull().default("GENERAL"),
+  link: text("link"),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
 

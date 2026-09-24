@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Session } from "next-auth";
 import AdminSearch from "@/components/admin/AdminSearch";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 const Header = ({ session }: { session: Session }) => {
   const firstName = session?.user?.name?.split(" ")[0] || session?.user?.name || "Admin";
@@ -16,13 +17,16 @@ const Header = ({ session }: { session: Session }) => {
         </p>
       </div>
 
-      <div className="w-full sm:w-auto">
+      <div className="flex items-center gap-3 w-full sm:w-auto">
         <Suspense fallback={<div className="h-11 w-full max-w-md rounded-lg bg-slate-100 animate-pulse" />}>
           <AdminSearch />
         </Suspense>
+
+        <NotificationDropdown variant="light" />
       </div>
     </header>
   );
 };
 export default Header;
+
 

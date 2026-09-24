@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Session } from "next-auth";
 import { signOut } from "next-auth/react";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 const Header = ({
   session,
@@ -27,7 +28,7 @@ const Header = ({
         </span>
       </Link>
 
-      <ul className="flex flex-row items-center gap-6 sm:gap-8">
+      <ul className="flex flex-row items-center gap-4 sm:gap-7">
         <li>
           <Link
             href="/"
@@ -52,6 +53,11 @@ const Header = ({
           >
             Search
           </Link>
+        </li>
+
+        {/* In-App Notifications */}
+        <li>
+          <NotificationDropdown variant="dark" />
         </li>
 
         <li>
@@ -85,5 +91,6 @@ const Header = ({
     </header>
   );
 };
+
 export default Header;
 

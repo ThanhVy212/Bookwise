@@ -54,16 +54,14 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${ibmPlexSerif.variable} ${monaSans.variable} ${bebasNeue.variable} ${ibmPlexSans.variable} relative font-sans h-full antialiased`}
     >
-      <SessionProvider session={session}>
-
-        <body className="min-h-full flex flex-col">
-          <Providers>
-            {children}
-          </Providers>
-        </body>
-      </SessionProvider>
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <SessionProvider session={session}>
+          <Providers>{children}</Providers>
+        </SessionProvider>
+      </body>
     </html>
   );
 }

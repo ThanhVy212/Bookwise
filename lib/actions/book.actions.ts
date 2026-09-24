@@ -1,12 +1,13 @@
 "use server";
 
 import { db } from "@/database/drizzle";
-import { books, borrowRecords, users, wishlists } from "@/database/schema";
+import { books, borrowRecords, users, wishlists, reviews } from "@/database/schema";
 import { BookFormValues } from "@/lib/validations";
 import { and, asc, desc, eq, gt, ilike, ne, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { sendEmail } from "@/lib/workflow";
 import { borrowConfirmationEmail, receiptEmail } from "@/lib/email-templates";
+import { createNotification } from "@/lib/notifications";
 
 export const getBookById = async (bookId: string) => {
   try {
@@ -252,6 +253,7 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
           borrowDate: new Date(),
           dueDate,
           status: "BORROWED",
+          renewCount: 0,
         })
         .returning();
 
@@ -295,6 +297,15 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
           dueDateStr,
           7,
         ),
+      }).catch(() => {});
+
+      // In-App Notification
+      await createNotification({
+        userId,
+        title: "Book Borrowed Successfully 📚",
+        message: `You borrowed "${book.title}". Please return by ${dueDateStr}.`,
+        type: "BORROW",
+        link: "/my-profile",
       }).catch(() => {});
     }
 
@@ -348,6 +359,7 @@ export const getUserBorrowedBooks = async (userId: string) => {
         dueDate: borrowRecords.dueDate,
         returnDate: borrowRecords.returnDate,
         status: borrowRecords.status,
+        renewCount: borrowRecords.renewCount,
         createdAt: borrowRecords.createdAt,
         book: {
           id: books.id,
@@ -561,8 +573,13 @@ export const getAllBooks = async ({
 };
 
 // Wishlist Server Actions
-export const toggleWishlist = async ({ bookId }: { bookId: string }) => {
+export const toggleWishlist = async (params: string | { bookId: string }) => {
   try {
+    const bookId = typeof params === "string" ? params : params?.bookId;
+    if (!bookId) {
+      return { success: false, error: "Book ID is required" };
+    }
+
     const session = await auth();
     if (!session?.user?.id) {
       return { success: false, error: "Please sign in to save books" };
@@ -570,7 +587,6 @@ export const toggleWishlist = async ({ bookId }: { bookId: string }) => {
 
     const userId = session.user.id;
 
-    // Check if already wishlisted
     const existing = await db
       .select()
       .from(wishlists)
@@ -592,8 +608,13 @@ export const toggleWishlist = async ({ bookId }: { bookId: string }) => {
   }
 };
 
-export const checkIsBookWishlisted = async (bookId: string) => {
+export const checkIsBookWishlisted = async (params: string | { bookId: string }) => {
   try {
+    const bookId = typeof params === "string" ? params : params?.bookId;
+    if (!bookId) {
+      return { isWishlisted: false };
+    }
+
     const session = await auth();
     if (!session?.user?.id) {
       return { isWishlisted: false };
@@ -677,6 +698,264 @@ export const getUserWishlist = async () => {
   }
 };
 
+// Reviews & Ratings Server Actions
+export const addOrUpdateReview = async ({
+  bookId,
+  rating,
+  comment,
+}: {
+  bookId: string;
+  rating: number;
+  comment: string;
+}) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Please sign in to write a review" };
+    }
+
+    const userId = session.user.id;
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return { success: false, error: "Rating must be an integer between 1 and 5" };
+    }
+    const validatedRating = rating;
+
+    if (!comment || !comment.trim()) {
+      return { success: false, error: "Comment cannot be empty" };
+    }
+
+    // Check if user has already reviewed
+    const existing = await db
+      .select()
+      .from(reviews)
+      .where(and(eq(reviews.userId, userId), eq(reviews.bookId, bookId)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(reviews)
+        .set({ rating: validatedRating, comment: comment.trim(), createdAt: new Date() })
+        .where(eq(reviews.id, existing[0].id));
+    } else {
+      await db.insert(reviews).values({
+        userId,
+        bookId,
+        rating: validatedRating,
+        comment: comment.trim(),
+      });
+    }
+
+    // Recalculate book average rating
+    const [avgResult] = await db
+      .select({ avgRating: sql<number>`round(avg(${reviews.rating}))` })
+      .from(reviews)
+      .where(eq(reviews.bookId, bookId));
+
+    const avgRating = Number(avgResult?.avgRating || validatedRating);
+    await db.update(books).set({ rating: avgRating }).where(eq(books.id, bookId));
+
+    return { success: true, message: "Review submitted successfully" };
+  } catch (error) {
+    console.error("Error submitting review:", error);
+    return { success: false, error: "Failed to submit review" };
+  }
+};
+
+export const getBookReviews = async (bookId: string) => {
+  try {
+    const reviewList = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          avatarUrl: users.avatarUrl,
+          universityId: users.universityId,
+        },
+      })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.userId, users.id))
+      .where(eq(reviews.bookId, bookId))
+      .orderBy(desc(reviews.createdAt));
+
+    const totalReviews = reviewList.length;
+    const avgRating =
+      totalReviews > 0
+        ? Number(
+            (
+              reviewList.reduce((acc, r) => acc + r.rating, 0) / totalReviews
+            ).toFixed(1),
+          )
+        : 0;
+
+    return {
+      success: true,
+      data: {
+        reviews: JSON.parse(JSON.stringify(reviewList)),
+        totalReviews,
+        avgRating,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    return {
+      success: false,
+      data: { reviews: [], totalReviews: 0, avgRating: 0 },
+    };
+  }
+};
+
+export const deleteReview = async (reviewId: string) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [review] = await db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.id, reviewId))
+      .limit(1);
+
+    if (!review) {
+      return { success: false, error: "Review not found" };
+    }
+
+    const isOwner = review.userId === session.user.id;
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const isAdmin = actingUser?.role === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
+      return { success: false, error: "Forbidden" };
+    }
+
+    await db.delete(reviews).where(eq(reviews.id, reviewId));
+
+    // Recalculate book average rating
+    const [avgResult] = await db
+      .select({ avgRating: sql<number>`round(avg(${reviews.rating}))` })
+      .from(reviews)
+      .where(eq(reviews.bookId, review.bookId));
+
+    const avgRating = Number(avgResult?.avgRating || 4);
+    await db.update(books).set({ rating: avgRating }).where(eq(books.id, review.bookId));
+
+    return { success: true, message: "Review deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    return { success: false, error: "Failed to delete review" };
+  }
+};
+
+// Renew Borrowed Book Server Action
+export const renewBorrowedBook = async ({ recordId }: { recordId: string }) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Please sign in to renew books" };
+    }
+
+    const [record] = await db
+      .select({
+        id: borrowRecords.id,
+        userId: borrowRecords.userId,
+        bookId: borrowRecords.bookId,
+        dueDate: borrowRecords.dueDate,
+        status: borrowRecords.status,
+        renewCount: borrowRecords.renewCount,
+        bookTitle: books.title,
+      })
+      .from(borrowRecords)
+      .innerJoin(books, eq(borrowRecords.bookId, books.id))
+      .where(eq(borrowRecords.id, recordId))
+      .limit(1);
+
+    if (!record) {
+      return { success: false, error: "Borrow record not found" };
+    }
+
+    const isOwner = record.userId === session.user.id;
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const isAdmin = actingUser?.role === "ADMIN";
+
+    if (!isOwner && !isAdmin) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (record.status !== "BORROWED") {
+      return { success: false, error: "Only active borrows can be renewed" };
+    }
+
+    if (record.renewCount >= 2) {
+      return {
+        success: false,
+        error: "You have reached the maximum of 2 renewals for this book",
+      };
+    }
+
+    // Check if overdue — compare UTC calendar dates (date-only dueDate parses at UTC midnight)
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    const dueDate = new Date(record.dueDate);
+    const dueUtcMidnight = Date.UTC(
+      dueDate.getUTCFullYear(),
+      dueDate.getUTCMonth(),
+      dueDate.getUTCDate(),
+    );
+
+    if (today > dueUtcMidnight) {
+      return {
+        success: false,
+        error:
+          "Overdue books cannot be renewed. Please return the book to the library.",
+      };
+    }
+
+    // Extend due date by 7 days (UTC date operations)
+    const newDueDateObj = new Date(dueUtcMidnight);
+    newDueDateObj.setUTCDate(newDueDateObj.getUTCDate() + 7);
+    const newDueDate = newDueDateObj.toISOString().slice(0, 10);
+
+    await db
+      .update(borrowRecords)
+      .set({
+        dueDate: newDueDate,
+        renewCount: record.renewCount + 1,
+      })
+      .where(eq(borrowRecords.id, recordId));
+
+    await createNotification({
+      userId: record.userId,
+      title: "Book Renewal Successful ⏳",
+      message: `You extended the borrowing period for "${record.bookTitle}". New due date: ${newDueDateObj.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}.`,
+      type: "RENEW",
+      link: "/my-profile",
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: `Book renewed! New due date: ${newDueDateObj.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })}`,
+      newDueDate,
+      renewCount: record.renewCount + 1,
+    };
+  } catch (error) {
+    console.error("Error renewing book:", error);
+    return { success: false, error: "Failed to renew book" };
+  }
+};
 
 export const updateBook = async (
   bookId: string,
@@ -752,3 +1031,4 @@ export const updateBook = async (
     };
   }
 };
+

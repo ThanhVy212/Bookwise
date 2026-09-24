@@ -3,11 +3,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
-import { getBookById, getSimilarBooks, checkBookBorrowEligibility, checkIsBookWishlisted } from "@/lib/actions/book.actions";
+import {
+  getBookById,
+  getSimilarBooks,
+  checkBookBorrowEligibility,
+  checkIsBookWishlisted,
+  getBookReviews,
+} from "@/lib/actions/book.actions";
 import BookCover from "@/components/BookCover";
 import BorrowBook from "@/components/BorrowBook";
 import BookVideo from "@/components/BookVideo";
 import WishlistButton from "@/components/WishlistButton";
+import BookReviews from "@/components/BookReviews";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,18 +35,19 @@ const Page = async ({ params }: Props) => {
 
   const book: Book = bookResult.data;
 
-  const [similarResult, wishlistStatus] = await Promise.all([
+  const [similarResult, wishlistStatus, reviewsResult] = await Promise.all([
     getSimilarBooks({
       currentBookId: id,
       genre: book.genre,
       limit: 6,
     }),
     session?.user?.id ? checkIsBookWishlisted(id) : Promise.resolve({ isWishlisted: false }),
+    getBookReviews(id),
   ]);
 
   const isWishlisted = wishlistStatus.isWishlisted;
-
   const similarBooks: Book[] = similarResult.data || [];
+  const reviews = reviewsResult.success ? reviewsResult.data.reviews : [];
 
   let alreadyBorrowed = false;
   let userStatus: string | null = null;
@@ -107,8 +115,6 @@ const Page = async ({ params }: Props) => {
           </div>
         </div>
 
-
-
         {/* 3D Book Cover */}
         <div className="relative flex flex-1 items-center justify-center pt-6 lg:pt-0">
           <div className="relative z-10">
@@ -131,11 +137,11 @@ const Page = async ({ params }: Props) => {
 
       {/* Bottom Section: Video & Summary on Left, Similar Books on Right */}
       <section className="grid grid-cols-1 gap-12 lg:grid-cols-3 lg:gap-16">
-        {/* Left Column (Video & Summary) */}
-        <div className="flex flex-col gap-10 lg:col-span-2">
+        {/* Left Column (Video, Summary, Reviews) */}
+        <div className="flex flex-col gap-12 lg:col-span-2">
           {/* Video Section */}
           <div>
-            <h2 className="text-2xl font-bold text-white mb-4">Video</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Video Trailer</h2>
             <BookVideo videoUrl={book.videoUrl} coverUrl={book.coverUrl} />
           </div>
 
@@ -149,6 +155,16 @@ const Page = async ({ params }: Props) => {
                   ))
                 : <p>{book.description}</p>}
             </div>
+          </div>
+
+          {/* Community Reviews Section */}
+          <div>
+            <BookReviews
+              bookId={book.id}
+              currentUserId={session?.user?.id}
+              userRole={(session?.user as any)?.role}
+              initialReviews={reviews}
+            />
           </div>
         </div>
 
@@ -185,3 +201,4 @@ const Page = async ({ params }: Props) => {
 };
 
 export default Page;
+

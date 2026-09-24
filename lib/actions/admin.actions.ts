@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/database/drizzle";
-import { books, borrowRecords, users, wishlists } from "@/database/schema";
+import { books, borrowRecords, users, reviews } from "@/database/schema";
 import { auth } from "@/auth";
 import { and, asc, desc, eq, ilike, or, sql, count } from "drizzle-orm";
 import { sendEmail } from "@/lib/workflow";
@@ -222,6 +222,8 @@ export const getAccountRequests = async () => {
   }
 };
 
+import { createNotification } from "@/lib/notifications";
+
 export const approveAccountRequest = async (userId: string) => {
   try {
     const session = await auth();
@@ -255,6 +257,15 @@ export const approveAccountRequest = async (userId: string) => {
         email: targetUser.email,
         subject: "Your BookWise Account Has Been Approved!",
         message: approvalEmail(targetUser.fullName),
+      }).catch(() => {});
+
+      await createNotification({
+        userId,
+        title: "Account Approved! 🎉",
+        message:
+          "Your BookWise student account has been approved. You can now borrow books and explore our catalog!",
+        type: "ACCOUNT_APPROVED",
+        link: "/",
       }).catch(() => {});
     }
 
@@ -299,6 +310,15 @@ export const rejectAccountRequest = async (userId: string) => {
         subject: "Your BookWise Account Was Not Approved",
         message: rejectionEmail(targetUser.fullName),
       }).catch(() => {});
+
+      await createNotification({
+        userId,
+        title: "Account Request Rejected ⚠️",
+        message:
+          "Your account registration was not approved. Please verify your student card or contact the library.",
+        type: "ACCOUNT_REJECTED",
+        link: "/my-profile",
+      }).catch(() => {});
     }
 
     return { success: true };
@@ -307,6 +327,7 @@ export const rejectAccountRequest = async (userId: string) => {
     return { success: false, error: "Failed to reject account" };
   }
 };
+
 
 export const getAllBorrowRecords = async ({
   query = "",
@@ -377,6 +398,7 @@ export const getAllBorrowRecords = async ({
         dueDate: borrowRecords.dueDate,
         returnDate: borrowRecords.returnDate,
         status: borrowRecords.status,
+        renewCount: borrowRecords.renewCount,
         createdAt: borrowRecords.createdAt,
         book: {
           id: books.id,
@@ -501,6 +523,14 @@ export const updateBorrowRecordStatus = async ({
           result.book.title,
         ),
       }).catch(() => {});
+
+      await createNotification({
+        userId: result.record.userId,
+        title: "Book Returned Successfully ✅",
+        message: `Thank you for returning "${result.book.title}". We hope you enjoyed reading it!`,
+        type: "RETURN",
+        link: "/my-profile",
+      }).catch(() => {});
     }
 
     return { success: true };
@@ -514,6 +544,7 @@ export const updateBorrowRecordStatus = async ({
 };
 
 export const getAdminStats = async () => {
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -731,5 +762,154 @@ export const deleteBook = async (bookId: string) => {
   } catch (error) {
     console.error("Error deleting book:", error);
     return { success: false, error: "Failed to delete book" };
+  }
+};
+
+export const getAllReviewsAdmin = async ({
+  page = 1,
+  limit = 10,
+  query = "",
+  rating,
+}: {
+  page?: number;
+  limit?: number;
+  query?: string;
+  rating?: number;
+} = {}) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const offset = (page - 1) * limit;
+    const conditions = [];
+
+    if (query) {
+      conditions.push(
+        or(
+          ilike(books.title, `%${query}%`),
+          ilike(users.fullName, `%${query}%`),
+          ilike(reviews.comment, `%${query}%`),
+        ),
+      );
+    }
+
+    if (rating !== undefined && rating > 0) {
+      conditions.push(eq(reviews.rating, rating));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const reviewList = await db
+      .select({
+        id: reviews.id,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        createdAt: reviews.createdAt,
+        user: {
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+          avatarUrl: users.avatarUrl,
+          universityId: users.universityId,
+        },
+        book: {
+          id: books.id,
+          title: books.title,
+          author: books.author,
+          coverUrl: books.coverUrl,
+          coverColor: books.coverColor,
+        },
+      })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.userId, users.id))
+      .innerJoin(books, eq(reviews.bookId, books.id))
+      .where(whereClause)
+      .orderBy(desc(reviews.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(reviews)
+      .innerJoin(users, eq(reviews.userId, users.id))
+      .innerJoin(books, eq(reviews.bookId, books.id))
+      .where(whereClause);
+
+    return {
+      success: true,
+      data: {
+        reviews: JSON.parse(JSON.stringify(reviewList)),
+        totalReviews: total,
+        totalPages: Math.ceil(total / limit),
+        currentPage: page,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching admin reviews:", error);
+    return {
+      success: false,
+      data: { reviews: [], totalReviews: 0, totalPages: 1, currentPage: 1 },
+    };
+  }
+};
+
+export const deleteReviewAdmin = async (reviewId: string) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [review] = await db
+      .select({
+        id: reviews.id,
+        bookId: reviews.bookId,
+        userId: reviews.userId,
+      })
+      .from(reviews)
+      .where(eq(reviews.id, reviewId))
+      .limit(1);
+
+    if (!review) {
+      return { success: false, error: "Review not found" };
+    }
+
+    await db.delete(reviews).where(eq(reviews.id, reviewId));
+
+    // Recalculate book average rating
+    const [avgResult] = await db
+      .select({ avgRating: sql<number>`round(avg(${reviews.rating}))` })
+      .from(reviews)
+      .where(eq(reviews.bookId, review.bookId));
+
+    const avgRating = Number(avgResult?.avgRating || 4);
+    await db.update(books).set({ rating: avgRating }).where(eq(books.id, review.bookId));
+
+    return { success: true, message: "Review deleted successfully" };
+  } catch (error) {
+    console.error("Error deleting review as admin:", error);
+    return { success: false, error: "Failed to delete review" };
   }
 };

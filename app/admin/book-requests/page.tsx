@@ -137,6 +137,13 @@ const BorrowRequestsPage = async ({
                       currentStatus={record.status}
                       isOverdue={isOverdue}
                     />
+                    {record.renewCount !== undefined && record.renewCount > 0 && (
+                      <div className="mt-1">
+                        <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                          Renewed {record.renewCount}/2
+                        </span>
+                      </div>
+                    )}
                   </td>
                   <td className="py-4 text-sm text-slate-500">
                     {new Date(record.borrowDate).toLocaleDateString("en-US", {
@@ -157,12 +164,34 @@ const BorrowRequestsPage = async ({
                         )
                       : "-"}
                   </td>
-                  <td className="py-4 text-sm text-slate-500">
-                    {new Date(record.dueDate).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "2-digit",
-                      year: "numeric",
-                    })}
+                  <td className="py-4 text-sm">
+                    <p className={isOverdue ? "font-semibold text-red-600" : "text-slate-500"}>
+                      {new Date(record.dueDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "2-digit",
+                        year: "numeric",
+                      })}
+                    </p>
+                    {isOverdue && (
+                      <div className="mt-1">
+                        {(() => {
+                          const daysOverdue = Math.max(
+                            1,
+                            Math.floor(
+                              (Date.now() - new Date(record.dueDate).getTime()) /
+                                (1000 * 60 * 60 * 24),
+                            ),
+                          );
+                          const fine = daysOverdue * 5000;
+                          return (
+                            <span className="inline-flex flex-col text-[11px] font-medium text-red-600">
+                              <span>+{daysOverdue}d overdue</span>
+                              <span>Fine: {fine.toLocaleString("vi-VN")}₫</span>
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </td>
                   <td className="py-4">
                     <div className="flex justify-end">

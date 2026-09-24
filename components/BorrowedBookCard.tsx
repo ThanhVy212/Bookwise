@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import BookCover from "@/components/BookCover";
 import BookReceiptModal from "@/components/BookReceiptModal";
+import { renewBorrowedBook } from "@/lib/actions/book.actions";
+import { toast } from "sonner";
+import { RefreshCw, Clock } from "lucide-react";
 
 interface BorrowedBookCardProps {
   record: {
@@ -15,6 +18,7 @@ interface BorrowedBookCardProps {
     dueDate: string | Date;
     returnDate?: string | Date | null;
     status: string;
+    renewCount?: number;
     book: {
       id: string;
       title: string;
@@ -34,9 +38,12 @@ const BorrowedBookCard = ({
   universityId,
 }: BorrowedBookCardProps) => {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [dueDate, setDueDate] = useState<string | Date>(record.dueDate);
+  const [renewCount, setRenewCount] = useState<number>(record.renewCount || 0);
+  const [isPending, startTransition] = useTransition();
 
   const borrowDateObj = new Date(record.borrowDate);
-  const dueDateObj = new Date(record.dueDate);
+  const dueDateObj = new Date(dueDate);
   const now = new Date();
 
   // Reset time to start of day for clean day difference calculation
@@ -52,6 +59,8 @@ const BorrowedBookCard = ({
 
   const isOverdue = record.status === "BORROWED" && diffDays < 0;
   const isReturned = record.status === "RETURNED";
+  const overdueDays = Math.abs(diffDays);
+  const overdueFine = overdueDays * 5000; // 5,000 VND per overdue day
 
   const formatDate = (date: Date | string | undefined | null) => {
     if (!date) return "";
@@ -59,6 +68,7 @@ const BorrowedBookCard = ({
     return d.toLocaleDateString("en-US", {
       month: "short",
       day: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -69,12 +79,34 @@ const BorrowedBookCard = ({
         ? "01 day left to due"
         : `${diffDays < 10 ? `0${diffDays}` : diffDays} days left to due`;
 
+  const handleRenew = () => {
+    startTransition(async () => {
+      try {
+        const result = await renewBorrowedBook({ recordId: record.id });
+        if (!result.success) {
+          toast.error(result.error || "Failed to renew book");
+          return;
+        }
+
+        toast.success(result.message || "Book renewed for 7 more days!");
+        if (result.newDueDate) {
+          setDueDate(result.newDueDate);
+        }
+        if (result.renewCount !== undefined) {
+          setRenewCount(result.renewCount);
+        }
+      } catch {
+        toast.error("An error occurred while renewing book");
+      }
+    });
+  };
+
   return (
     <>
       <div className="relative flex flex-col justify-between rounded-2xl bg-dark-300/90 p-5 border border-light-100/5 shadow-xl transition-all duration-200 hover:border-light-100/20 group">
         {/* Overdue Warning Badge on Top Left */}
         {isOverdue && (
-          <div className="absolute top-4 left-4 z-20 flex size-6 items-center justify-center rounded-md bg-red-500/10 border border-red-500/40 text-red-500 text-xs font-bold">
+          <div className="absolute top-4 left-4 z-20 flex size-7 items-center justify-center rounded-lg bg-rose-500/20 border border-rose-500/50 text-rose-500 text-xs font-bold animate-pulse">
             !
           </div>
         )}
@@ -102,9 +134,17 @@ const BorrowedBookCard = ({
             </h3>
           </Link>
 
-          <p className="text-xs italic text-light-100 line-clamp-1">
-            {record.book.genre}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs italic text-light-100 line-clamp-1">
+              {record.book.genre}
+            </p>
+            {renewCount > 0 && !isReturned && (
+              <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <Clock className="size-3" />
+                Renewed {renewCount}/2
+              </span>
+            )}
+          </div>
 
           <div className="mt-2 flex items-center justify-between border-t border-light-100/5 pt-3">
             <div className="flex flex-col gap-1.5">
@@ -135,17 +175,20 @@ const BorrowedBookCard = ({
                     </span>
                   </>
                 ) : isOverdue ? (
-                  <>
-                    <Image
-                      src="/icons/warning.svg"
-                      alt="overdue"
-                      width={14}
-                      height={14}
-                    />
-                    <span className="font-semibold text-[#EF3A4B]">
-                      Overdue Return
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5 font-semibold text-[#EF3A4B]">
+                      <Image
+                        src="/icons/warning.svg"
+                        alt="overdue"
+                        width={14}
+                        height={14}
+                      />
+                      <span>Overdue by {overdueDays} {overdueDays === 1 ? "day" : "days"}</span>
+                    </div>
+                    <span className="text-[11px] text-rose-400/90 font-medium">
+                      Estimated fine: {overdueFine.toLocaleString("vi-VN")} VND
                     </span>
-                  </>
+                  </div>
                 ) : (
                   <>
                     <Image
@@ -155,27 +198,46 @@ const BorrowedBookCard = ({
                       height={14}
                       className="opacity-70"
                     />
-                    <span className="text-light-100">{daysLeftText}</span>
+                    <span className="text-light-100">
+                      {daysLeftText} ({formatDate(dueDateObj)})
+                    </span>
                   </>
                 )}
               </div>
             </div>
 
-            {/* Receipt Button */}
-            <button
-              type="button"
-              onClick={() => setIsReceiptOpen(true)}
-              className="flex size-8 items-center justify-center rounded-lg bg-dark-600/50 text-light-100 hover:bg-dark-600 hover:text-white transition-all cursor-pointer"
-              title="View receipt"
-              aria-label="View receipt"
-            >
-              <Image
-                src="/icons/receipt.svg"
-                alt="receipt"
-                width={16}
-                height={16}
-              />
-            </button>
+            {/* Actions: Renew & Receipt */}
+            <div className="flex items-center gap-2">
+              {/* Renew Button (Only when borrowed, not overdue, and under 2 renewals) */}
+              {!isReturned && !isOverdue && renewCount < 2 && (
+                <button
+                  type="button"
+                  onClick={handleRenew}
+                  disabled={isPending}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+                  title="Renew book for 7 more days"
+                >
+                  <RefreshCw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
+                  <span className="hidden xs:inline">Renew</span>
+                </button>
+              )}
+
+              {/* Receipt Button */}
+              <button
+                type="button"
+                onClick={() => setIsReceiptOpen(true)}
+                className="flex size-8 items-center justify-center rounded-lg bg-dark-600/50 text-light-100 hover:bg-dark-600 hover:text-white transition-all cursor-pointer"
+                title="View receipt"
+                aria-label="View receipt"
+              >
+                <Image
+                  src="/icons/receipt.svg"
+                  alt="receipt"
+                  width={16}
+                  height={16}
+                />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -184,7 +246,7 @@ const BorrowedBookCard = ({
       <BookReceiptModal
         isOpen={isReceiptOpen}
         onClose={() => setIsReceiptOpen(false)}
-        record={record}
+        record={{ ...record, dueDate }}
         userName={userName}
         universityId={universityId}
       />
@@ -193,3 +255,4 @@ const BorrowedBookCard = ({
 };
 
 export default BorrowedBookCard;
+

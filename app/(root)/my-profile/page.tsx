@@ -2,12 +2,10 @@ import React from "react";
 import { auth } from "@/auth";
 import { notFound, redirect } from "next/navigation";
 import { getUserById } from "@/lib/actions/auth.actions";
-import { getUserBorrowedBooks } from "@/lib/actions/book.actions";
+import { getUserBorrowedBooks, getUserWishlist } from "@/lib/actions/book.actions";
 import StudentCard from "@/components/StudentCard";
-import BorrowedBookCard from "@/components/BorrowedBookCard";
 import ResendAccountRequest from "@/components/ResendAccountRequest";
-import Link from "next/link";
-import Image from "next/image";
+import ProfileTabs from "@/components/ProfileTabs";
 
 const Page = async () => {
   const session = await auth();
@@ -16,9 +14,10 @@ const Page = async () => {
     redirect("/sign-in");
   }
 
-  const [userResult, borrowedResult] = await Promise.all([
+  const [userResult, borrowedResult, wishlistResult] = await Promise.all([
     getUserById(session.user.id),
     getUserBorrowedBooks(session.user.id),
+    getUserWishlist(),
   ]);
 
   if (!userResult.success) {
@@ -26,8 +25,8 @@ const Page = async () => {
   }
 
   const user = userResult.data;
-
   const borrowedBooks = borrowedResult.success ? borrowedResult.data : [];
+  const wishlistedBooks = wishlistResult.success ? wishlistResult.data : [];
 
   return (
     <div className="flex flex-col lg:flex-row items-start gap-10 lg:gap-14">
@@ -37,46 +36,13 @@ const Page = async () => {
         {user.status === "REJECTED" && <ResendAccountRequest />}
       </div>
 
-      {/* Right Column: Borrowed Books */}
-      <div className="flex-1 w-full">
-        <h1 className="text-3xl font-bold text-white mb-8">Borrowed books</h1>
-
-        {borrowedBooks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {borrowedBooks.map((record: any) => (
-              <BorrowedBookCard
-                key={record.id}
-                record={record}
-                userName={user.fullName}
-                universityId={user.universityId}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-3xl bg-dark-300/40 p-12 text-center border border-light-100/5">
-            <Image
-              src="/images/no-books.png"
-              alt="no books"
-              width={180}
-              height={180}
-              className="opacity-60"
-            />
-            <h3 className="mt-6 text-xl font-bold text-white">
-              No borrowed books yet
-            </h3>
-            <p className="mt-2 text-sm text-light-100 max-w-sm leading-relaxed">
-              Explore our collection of books and start borrowing your favorite
-              titles today!
-            </p>
-            <Link
-              href="/"
-              className="mt-6 inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 font-semibold text-dark-100 hover:bg-primary/90 transition-colors shadow-md"
-            >
-              Browse Library
-            </Link>
-          </div>
-        )}
-      </div>
+      {/* Right Column: Profile Tabs (Borrowed Books & Saved for Later) */}
+      <ProfileTabs
+        borrowedBooks={borrowedBooks}
+        wishlistedBooks={wishlistedBooks}
+        userName={user.fullName}
+        universityId={user.universityId}
+      />
     </div>
   );
 };

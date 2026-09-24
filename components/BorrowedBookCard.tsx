@@ -32,6 +32,16 @@ interface BorrowedBookCardProps {
   universityId?: number | string;
 }
 
+// Parse date-only values ("YYYY-MM-DD") as local calendar dates to avoid timezone shifts
+const parseCalendarDate = (value: string | Date): Date => {
+  const iso = (value instanceof Date ? value.toISOString() : value).slice(0, 10);
+  const [year, month, day] = iso.split("-").map(Number);
+  if (year && month && day) {
+    return new Date(year, month - 1, day);
+  }
+  return new Date(value);
+};
+
 const BorrowedBookCard = ({
   record,
   userName,
@@ -43,7 +53,7 @@ const BorrowedBookCard = ({
   const [isPending, startTransition] = useTransition();
 
   const borrowDateObj = new Date(record.borrowDate);
-  const dueDateObj = new Date(dueDate);
+  const dueDateObj = parseCalendarDate(dueDate);
   const now = new Date();
 
   // Reset time to start of day for clean day difference calculation
@@ -209,7 +219,7 @@ const BorrowedBookCard = ({
             {/* Actions: Renew & Receipt */}
             <div className="flex items-center gap-2">
               {/* Renew Button (Only when borrowed, not overdue, and under 2 renewals) */}
-              {!isReturned && !isOverdue && renewCount < 2 && (
+              {record.status === "BORROWED" && !isReturned && !isOverdue && renewCount < 2 && (
                 <button
                   type="button"
                   onClick={handleRenew}

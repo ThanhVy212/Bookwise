@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import Image from "next/image";
 import { Star, MessageSquare, Trash2, Send } from "lucide-react";
 import { toast } from "sonner";
-import { addOrUpdateReview, deleteReview } from "@/lib/actions/book.actions";
+import { addOrUpdateReview, deleteReview, getBookReviews } from "@/lib/actions/book.actions";
 import { getInitials, getImageKitUrl } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -73,22 +73,21 @@ const BookReviews = ({
         toast.success(result.message || "Review submitted successfully!");
         setComment("");
 
-        // Optimistically update list
-        const updatedList: ReviewItem[] = [
-          {
-            id: userExistingReview ? userExistingReview.id : `temp-${Date.now()}`,
-            rating,
-            comment: comment.trim(),
-            createdAt: new Date(),
-            user: {
-              id: currentUserId,
-              fullName: "You",
-              universityId: "Me",
+        // Reload persisted reviews so the list uses the real ID, name, and avatar
+        const fresh = await getBookReviews(bookId);
+        if (fresh.success) {
+          setReviewsList(fresh.data.reviews);
+        } else if (userExistingReview) {
+          setReviewsList([
+            {
+              ...userExistingReview,
+              rating,
+              comment: comment.trim(),
+              createdAt: new Date(),
             },
-          },
-          ...reviewsList.filter((r) => r.user.id !== currentUserId),
-        ];
-        setReviewsList(updatedList);
+            ...reviewsList.filter((r) => r.user.id !== currentUserId),
+          ]);
+        }
       } catch {
         toast.error("An error occurred while saving your review");
       }

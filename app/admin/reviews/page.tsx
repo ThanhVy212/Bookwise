@@ -47,7 +47,7 @@ const AdminReviewsPage = async ({
         {/* Rating Filters */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           <Link
-            href={`/admin/reviews${query ? `?query=${query}` : ""}`}
+            href={`/admin/reviews${query ? `?query=${encodeURIComponent(query)}` : ""}`}
             className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
               !ratingFilter
                 ? "bg-primary-admin text-white"
@@ -59,7 +59,7 @@ const AdminReviewsPage = async ({
           {[5, 4, 3, 2, 1].map((star) => (
             <Link
               key={star}
-              href={`/admin/reviews?rating=${star}${query ? `&query=${query}` : ""}`}
+              href={`/admin/reviews?rating=${star}${query ? `&query=${encodeURIComponent(query)}` : ""}`}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
                 ratingFilter === star
                   ? "bg-amber-500 text-white"
@@ -240,7 +240,7 @@ const AdminReviewsPage = async ({
             (pageNum) => (
               <a
                 key={pageNum}
-                href={`/admin/reviews?page=${pageNum}${ratingFilter ? `&rating=${ratingFilter}` : ""}${query ? `&query=${query}` : ""}`}
+                href={`/admin/reviews?page=${pageNum}${ratingFilter ? `&rating=${ratingFilter}` : ""}${query ? `&query=${encodeURIComponent(query)}` : ""}`}
                 className={`flex size-10 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
                   pageNum === currentPage
                     ? "bg-primary-admin text-white"

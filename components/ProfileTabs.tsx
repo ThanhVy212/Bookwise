@@ -12,6 +12,7 @@ interface ProfileTabsProps {
   wishlistedBooks: any[];
   userName: string;
   universityId: number | string;
+  initialTab?: "borrowed" | "saved";
 }
 
 const ProfileTabs = ({
@@ -19,8 +20,9 @@ const ProfileTabs = ({
   wishlistedBooks: initialWishlistedBooks,
   userName,
   universityId,
+  initialTab = "borrowed",
 }: ProfileTabsProps) => {
-  const [activeTab, setActiveTab] = useState<"borrowed" | "saved">("borrowed");
+  const [activeTab, setActiveTab] = useState<"borrowed" | "saved">(initialTab);
   const [wishlist, setWishlist] = useState<any[]>(initialWishlistedBooks);
 
   const handleRemoveWishlist = (bookId: string) => {

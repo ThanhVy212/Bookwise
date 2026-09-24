@@ -4,43 +4,8 @@ import { db } from "@/database/drizzle";
 import { notifications, users } from "@/database/schema";
 import { auth } from "@/auth";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { emitSocketNotification, broadcastSocketNotification } from "@/lib/socket-server";
-
-export const createNotification = async ({
-  userId,
-  title,
-  message,
-  type = "GENERAL",
-  link,
-}: {
-  userId: string;
-  title: string;
-  message: string;
-  type?: string;
-  link?: string;
-}) => {
-  try {
-    const [newNotif] = await db
-      .insert(notifications)
-      .values({
-        userId,
-        title,
-        message,
-        type,
-        link,
-        isRead: false,
-      })
-      .returning();
-
-    const notifData = JSON.parse(JSON.stringify(newNotif));
-    emitSocketNotification(userId, notifData);
-
-    return { success: true, data: notifData };
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    return { success: false, error: "Failed to create notification" };
-  }
-};
+import { emitSocketNotification } from "@/lib/socket-server";
+import { isSafeNotificationLink } from "@/lib/notifications";
 
 export const getUserNotifications = async () => {
   try {
@@ -157,6 +122,10 @@ export const sendCustomNotificationAdmin = async ({
       return { success: false, error: "Title and message are required" };
     }
 
+    if (!isSafeNotificationLink(link)) {
+      return { success: false, error: "Invalid notification link" };
+    }
+
     if (recipientType === "SPECIFIC") {
       if (!userId) {
         return { success: false, error: "Please select a recipient" };
@@ -198,17 +167,15 @@ export const sendCustomNotificationAdmin = async ({
         isRead: false,
       }));
 
-      await db.insert(notifications).values(notifValues);
+      const insertedRows = await db
+        .insert(notifications)
+        .values(notifValues)
+        .returning();
 
-      broadcastSocketNotification({
-        id: crypto.randomUUID ? crypto.randomUUID() : `broadcast_${Date.now()}`,
-        title: title.trim(),
-        message: message.trim(),
-        type,
-        link: link?.trim() || null,
-        createdAt: new Date(),
-        isRead: false,
-      });
+      const notifRows = JSON.parse(JSON.stringify(insertedRows));
+      for (const notif of notifRows) {
+        emitSocketNotification(notif.userId, notif);
+      }
 
       return {
         success: true,

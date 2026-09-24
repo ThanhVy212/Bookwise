@@ -4,10 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "dev:next": "next dev",
     "build": "next build",
     "start": "node server.js",
-    "start:next": "next start",
     "lint": "eslint",
     "seed": "npx tsx database/seed.ts",
     "db:generate": "npx drizzle-kit generate",

@@ -29,18 +29,23 @@ const WishlistButton = ({
     setIsWishlisted(nextState);
 
     startTransition(async () => {
-      const result = await toggleWishlist(bookId);
-      if (!result.success) {
-        setIsWishlisted(!nextState); // rollback
-        toast.error(result.error || "Failed to update saved books");
-      } else {
-        setIsWishlisted(result.isWishlisted ?? nextState);
-        onWishlistChange?.(result.isWishlisted ?? nextState);
-        if (result.isWishlisted) {
-          toast.success("Saved to your reading list ❤️");
+      try {
+        const result = await toggleWishlist(bookId);
+        if (!result.success) {
+          setIsWishlisted(!nextState); // rollback
+          toast.error(result.error || "Failed to update saved books");
         } else {
-          toast.info("Removed from saved books");
+          setIsWishlisted(result.isWishlisted ?? nextState);
+          onWishlistChange?.(result.isWishlisted ?? nextState);
+          if (result.isWishlisted) {
+            toast.success("Saved to your reading list ❤️");
+          } else {
+            toast.info("Removed from saved books");
+          }
         }
+      } catch {
+        setIsWishlisted(!nextState); // rollback
+        toast.error("Failed to update saved books");
       }
     });
   };

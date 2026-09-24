@@ -7,7 +7,7 @@ import { and, asc, desc, eq, gt, ilike, ne, or, sql } from "drizzle-orm";
 import { auth } from "@/auth";
 import { sendEmail } from "@/lib/workflow";
 import { borrowConfirmationEmail, receiptEmail } from "@/lib/email-templates";
-import { createNotification } from "@/lib/actions/notification.actions";
+import { createNotification } from "@/lib/notifications";
 
 export const getBookById = async (bookId: string) => {
   try {
@@ -715,7 +715,11 @@ export const addOrUpdateReview = async ({
     }
 
     const userId = session.user.id;
-    const validatedRating = Math.max(1, Math.min(5, Math.round(rating)));
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return { success: false, error: "Rating must be an integer between 1 and 5" };
+    }
+    const validatedRating = rating;
 
     if (!comment || !comment.trim()) {
       return { success: false, error: "Comment cannot be empty" };
@@ -823,7 +827,12 @@ export const deleteReview = async (reviewId: string) => {
     }
 
     const isOwner = review.userId === session.user.id;
-    const isAdmin = (session.user as any).role === "ADMIN";
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const isAdmin = actingUser?.role === "ADMIN";
 
     if (!isOwner && !isAdmin) {
       return { success: false, error: "Forbidden" };
@@ -875,7 +884,12 @@ export const renewBorrowedBook = async ({ recordId }: { recordId: string }) => {
     }
 
     const isOwner = record.userId === session.user.id;
-    const isAdmin = (session.user as any).role === "ADMIN";
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+    const isAdmin = actingUser?.role === "ADMIN";
 
     if (!isOwner && !isAdmin) {
       return { success: false, error: "Unauthorized" };
@@ -892,13 +906,17 @@ export const renewBorrowedBook = async ({ recordId }: { recordId: string }) => {
       };
     }
 
-    // Check if overdue
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Check if overdue — compare UTC calendar dates (date-only dueDate parses at UTC midnight)
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     const dueDate = new Date(record.dueDate);
-    dueDate.setHours(0, 0, 0, 0);
+    const dueUtcMidnight = Date.UTC(
+      dueDate.getUTCFullYear(),
+      dueDate.getUTCMonth(),
+      dueDate.getUTCDate(),
+    );
 
-    if (today > dueDate) {
+    if (today > dueUtcMidnight) {
       return {
         success: false,
         error:
@@ -906,9 +924,9 @@ export const renewBorrowedBook = async ({ recordId }: { recordId: string }) => {
       };
     }
 
-    // Extend due date by 7 days
-    const newDueDateObj = new Date(dueDate);
-    newDueDateObj.setDate(newDueDateObj.getDate() + 7);
+    // Extend due date by 7 days (UTC date operations)
+    const newDueDateObj = new Date(dueUtcMidnight);
+    newDueDateObj.setUTCDate(newDueDateObj.getUTCDate() + 7);
     const newDueDate = newDueDateObj.toISOString().slice(0, 10);
 
     await db

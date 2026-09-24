@@ -35,13 +35,22 @@ const WishlistedBookCard = ({ book, onRemove }: WishlistedBookProps) => {
     setIsRemoved(true);
 
     startTransition(async () => {
-      const result = await toggleWishlist(book.id);
-      if (!result.success) {
+      try {
+        const result = await toggleWishlist(book.id);
+        if (!result.success) {
+          setIsRemoved(false);
+          toast.error(result.error || "Failed to remove book");
+        } else if (result.isWishlisted) {
+          // Toggle re-saved the book instead of removing it — treat as failed removal
+          setIsRemoved(false);
+          toast.error("Failed to remove book");
+        } else {
+          toast.info(`Removed "${book.title}" from your wishlist`);
+          onRemove?.(book.id);
+        }
+      } catch {
         setIsRemoved(false);
-        toast.error(result.error || "Failed to remove book");
-      } else {
-        toast.info(`Removed "${book.title}" from your wishlist`);
-        onRemove?.(book.id);
+        toast.error("Failed to remove book");
       }
     });
   };

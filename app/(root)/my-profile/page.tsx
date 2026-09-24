@@ -7,11 +7,12 @@ import StudentCard from "@/components/StudentCard";
 import ResendAccountRequest from "@/components/ResendAccountRequest";
 import ProfileTabs from "@/components/ProfileTabs";
 
-interface ProfilePageProps {
-  searchParams?: Promise<{ tab?: string }>;
-}
-
-const Page = async ({ searchParams }: ProfilePageProps) => {
+const Page = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) => {
+  const { tab } = await searchParams;
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -46,10 +47,10 @@ const Page = async ({ searchParams }: ProfilePageProps) => {
         wishlistedBooks={wishlistedBooks}
         userName={user.fullName}
         universityId={user.universityId}
+        initialTab={tab === "wishlist" ? "saved" : "borrowed"}
       />
     </div>
   );
 };
 
 export default Page;
-

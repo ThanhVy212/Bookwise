@@ -175,12 +175,26 @@ const BorrowRequestsPage = async ({
                     {isOverdue && (
                       <div className="mt-1">
                         {(() => {
+                          const iso = (
+                            record.dueDate instanceof Date
+                              ? record.dueDate.toISOString()
+                              : String(record.dueDate)
+                          ).slice(0, 10);
+                          const [y, m, d] = iso.split("-").map(Number);
+                          const dueDay = new Date(y, m - 1, d);
+                          const now = new Date();
+                          const today = new Date(
+                            now.getFullYear(),
+                            now.getMonth(),
+                            now.getDate(),
+                          );
+                          const dayDiff = Math.round(
+                            (today.getTime() - dueDay.getTime()) /
+                              (1000 * 60 * 60 * 24),
+                          );
                           const daysOverdue = Math.max(
                             1,
-                            Math.floor(
-                              (Date.now() - new Date(record.dueDate).getTime()) /
-                                (1000 * 60 * 60 * 24),
-                            ),
+                            Number.isFinite(dayDiff) ? dayDiff : 1,
                           );
                           const fine = daysOverdue * 5000;
                           return (

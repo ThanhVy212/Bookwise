@@ -222,7 +222,7 @@ export const getAccountRequests = async () => {
   }
 };
 
-import { createNotification } from "@/lib/actions/notification.actions";
+import { createNotification } from "@/lib/notifications";
 
 export const approveAccountRequest = async (userId: string) => {
   try {

@@ -9,6 +9,7 @@ import {
   timestamp,
   uniqueIndex,
   boolean,
+  check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -106,7 +107,10 @@ export const reviews = pgTable(
     comment: text("comment").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  (t) => [uniqueIndex("user_book_review_idx").on(t.userId, t.bookId)],
+  (t) => [
+    uniqueIndex("user_book_review_idx").on(t.userId, t.bookId),
+    check("reviews_rating_range", sql`${t.rating} >= 1 AND ${t.rating} <= 5`),
+  ],
 );
 
 export const notifications = pgTable("notifications", {

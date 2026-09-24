@@ -4,8 +4,11 @@ import Link from "next/link";
 import BookCover from "@/components/BookCover";
 
 
+import WishlistButton from "@/components/WishlistButton";
+
 interface BookOverviewProps extends Book {
   userId?: string;
+  isWishlisted?: boolean;
 }
 
 const BookOverview = ({
@@ -19,6 +22,7 @@ const BookOverview = ({
   description,
   coverColor,
   coverUrl,
+  isWishlisted = false,
 }: BookOverviewProps) => {
   return (
     <section className="flex flex-col-reverse items-center justify-between gap-12 lg:flex-row lg:items-start lg:gap-16">
@@ -53,11 +57,20 @@ const BookOverview = ({
 
         <p className="book-description leading-relaxed">{description}</p>
 
-        <Link href={`/books/${id}`} className="book-overview_btn">
-          <Image src="/icons/book.svg" alt="book" width={22} height={22} />
-          <span>BORROW BOOK</span>
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link href={`/books/${id}`} className="book-overview_btn">
+            <Image src="/icons/book.svg" alt="book" width={22} height={22} />
+            <span>BORROW BOOK</span>
+          </Link>
+
+          <WishlistButton
+            bookId={id}
+            initialIsWishlisted={isWishlisted}
+            variant="button"
+          />
+        </div>
       </div>
+
 
       {/* 3D Book Cover */}
       <div className="relative flex flex-1 items-center justify-center pt-6 lg:pt-0">

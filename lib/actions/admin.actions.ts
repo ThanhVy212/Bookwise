@@ -12,6 +12,7 @@ import {
   receiptEmail,
 } from "@/lib/email-templates";
 
+
 export const getAllUsers = async ({
   query = "",
   page = 1,
@@ -578,6 +579,10 @@ export const getAdminStats = async () => {
       .from(users)
       .where(eq(users.status, "PENDING"));
 
+    const [totalWishlistsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(wishlists);
+
     return {
       success: true,
       data: {
@@ -585,6 +590,7 @@ export const getAdminStats = async () => {
         totalUsers: Number(totalUsersResult?.count || 0),
         borrowedBooks: Number(borrowedBooksResult?.count || 0),
         pendingAccounts: Number(pendingAccountsResult?.count || 0),
+        totalWishlists: Number(totalWishlistsResult?.count || 0),
       },
     };
   } catch (error) {
@@ -592,6 +598,52 @@ export const getAdminStats = async () => {
     return { success: false, error: "Failed to fetch stats" };
   }
 };
+
+export const getTopWishlistedBooks = async (limit = 5) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized", data: [] };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized", data: [] };
+    }
+
+    const topBooks = await db
+      .select({
+        id: books.id,
+        title: books.title,
+        author: books.author,
+        genre: books.genre,
+        coverUrl: books.coverUrl,
+        coverColor: books.coverColor,
+        totalCopies: books.totalCopies,
+        availableCopies: books.availableCopies,
+        wishlistCount: sql<number>`count(${wishlists.id})::int`,
+      })
+      .from(books)
+      .innerJoin(wishlists, eq(books.id, wishlists.bookId))
+      .groupBy(books.id)
+      .orderBy(desc(sql`count(${wishlists.id})`))
+      .limit(limit);
+
+    return {
+      success: true,
+      data: JSON.parse(JSON.stringify(topBooks)),
+    };
+  } catch (error) {
+    console.error("Error fetching top wishlisted books:", error);
+    return { success: false, error: "Failed to fetch top wishlisted books", data: [] };
+  }
+};
+
 
 export const getRecentBorrowRequests = async (limit = 3) => {
   try {

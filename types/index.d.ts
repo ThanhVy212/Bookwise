@@ -14,6 +14,8 @@ interface Book {
   videoUrl: string;
   summary: string;
   createdAt: Date | null;
+  wishlistCount?: number;
+  isWishlisted?: boolean;
 }
 
 interface AuthCredentials {
@@ -53,7 +55,9 @@ interface BookListProps {
   title: string;
   books: Book[];
   className?: string;
+  wishlistBookIds?: string[];
 }
+
 
 interface ImageUploadProps {
   type: "image" | "video";

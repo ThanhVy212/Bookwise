@@ -1,6 +1,7 @@
 import React from "react";
 import Image from "next/image";
-import { getAllBooks } from "@/lib/actions/book.actions";
+import { getAllBooks, getUserWishlistBookIds } from "@/lib/actions/book.actions";
+import { auth } from "@/auth";
 import SearchInput from "@/components/SearchInput";
 import SearchFilter from "@/components/SearchFilter";
 import SearchBookCard from "@/components/SearchBookCard";
@@ -13,25 +14,34 @@ interface SearchPageProps {
     genre?: string;
     page?: string;
     sort?: string;
+    availableOnly?: string;
   }>;
 }
 
 const SearchPage = async ({ searchParams }: SearchPageProps) => {
+  const session = await auth();
   const resolvedParams = await searchParams;
   const query = resolvedParams.query || "";
   const genre = resolvedParams.genre || "";
   const sort = resolvedParams.sort || "latest";
+  const availableOnly = resolvedParams.availableOnly === "true";
 
   const parsedPage = Number(resolvedParams.page);
   const requestedPage = Number.isInteger(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
 
-  const result = await getAllBooks({
-    query,
-    genre,
-    page: requestedPage,
-    limit: 12,
-    sort,
-  });
+  const [result, wishlistResult] = await Promise.all([
+    getAllBooks({
+      query,
+      genre,
+      page: requestedPage,
+      limit: 12,
+      sort,
+      availableOnly,
+    }),
+    session?.user?.id ? getUserWishlistBookIds() : Promise.resolve({ success: true, data: [] as string[] }),
+  ]);
+
+  const wishlistBookIds = wishlistResult.data || [];
 
   if (!result.success) {
     return (
@@ -68,7 +78,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
   }
 
   const finalResult = page !== requestedPage
-    ? await getAllBooks({ query, genre, page, limit: 12, sort })
+    ? await getAllBooks({ query, genre, page, limit: 12, sort, availableOnly })
     : result;
 
   if (!finalResult.success) {
@@ -119,25 +129,35 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
 
       {/* Results Header & Grid Section */}
       <section className="flex flex-col gap-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-light-100/10 pb-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">
-            {query.trim() ? (
-              <>
-                Search Result for <span className="text-primary font-semibold">{query}</span>
-              </>
-            ) : (
-              "Search Results"
-            )}
-          </h2>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-light-100/10 pb-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-white">
+              {query.trim() ? (
+                <>
+                  Search Result for <span className="text-primary font-semibold">{query}</span>
+                </>
+              ) : (
+                "Search Results"
+              )}
+            </h2>
+            <p className="text-sm text-light-100/70 mt-1">
+              Found {rest.totalBooks ?? finalBooks.length} books in catalog
+            </p>
+          </div>
 
-          <SearchFilter genres={genres} selectedGenre={genre} />
+          <SearchFilter
+            genres={genres}
+            selectedGenre={genre}
+            selectedSort={sort}
+            availableOnly={availableOnly}
+          />
         </div>
 
         {/* Book Grid or Not Found */}
         {finalBooks.length > 0 ? (
           <>
             <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 sm:gap-8">
-              {finalBooks.map((book) => (
+              {finalBooks.map((book: any) => (
                 <SearchBookCard
                   key={book.id}
                   id={book.id}
@@ -146,6 +166,7 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
                   genre={book.genre}
                   coverColor={book.coverColor}
                   coverUrl={book.coverUrl}
+                  isWishlisted={wishlistBookIds.includes(book.id)}
                 />
               ))}
             </div>
@@ -161,3 +182,4 @@ const SearchPage = async ({ searchParams }: SearchPageProps) => {
 };
 
 export default SearchPage;
+

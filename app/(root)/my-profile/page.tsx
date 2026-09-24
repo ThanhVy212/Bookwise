@@ -7,7 +7,11 @@ import StudentCard from "@/components/StudentCard";
 import ResendAccountRequest from "@/components/ResendAccountRequest";
 import ProfileTabs from "@/components/ProfileTabs";
 
-const Page = async () => {
+interface ProfilePageProps {
+  searchParams?: Promise<{ tab?: string }>;
+}
+
+const Page = async ({ searchParams }: ProfilePageProps) => {
   const session = await auth();
 
   if (!session?.user?.id) {
@@ -48,3 +52,4 @@ const Page = async () => {
 };
 
 export default Page;
+

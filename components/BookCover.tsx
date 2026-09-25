@@ -41,6 +41,7 @@ const BookCover = ({
             src={finalCoverUrl}
             alt="Book cover"
             fill
+            sizes="(max-width: 768px) 45vw, 200px"
             className="rounded-sm object-fill"
           />
         </div>

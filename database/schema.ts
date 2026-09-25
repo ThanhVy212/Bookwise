@@ -60,23 +60,32 @@ export const books = pgTable("books", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const borrowRecords = pgTable("borrow_records", {
-  id: uuid("id").notNull().primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .references(() => users.id, { onDelete: "cascade" })
-    .notNull(),
-  bookId: uuid("book_id")
-    .references(() => books.id, { onDelete: "cascade" })
-    .notNull(),
-  borrowDate: timestamp("borrow_date", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-  dueDate: date("due_date").notNull(),
-  returnDate: date("return_date"),
-  status: BORROW_STATUS_ENUM("status").default("BORROWED").notNull(),
-  renewCount: integer("renew_count").default(0).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+export const borrowRecords = pgTable(
+  "borrow_records",
+  {
+    id: uuid("id").notNull().primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    bookId: uuid("book_id")
+      .references(() => books.id, { onDelete: "cascade" })
+      .notNull(),
+    borrowDate: timestamp("borrow_date", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    dueDate: date("due_date").notNull(),
+    returnDate: date("return_date"),
+    pickedUpAt: timestamp("picked_up_at", { withTimezone: true }),
+    status: BORROW_STATUS_ENUM("status").default("BORROWED").notNull(),
+    renewCount: integer("renew_count").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("borrow_records_active_user_book_idx")
+      .on(t.userId, t.bookId)
+      .where(sql`${t.status} = 'BORROWED'`),
+  ],
+);
 
 export const wishlists = pgTable(
   "wishlists",

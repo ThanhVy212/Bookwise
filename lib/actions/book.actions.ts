@@ -8,6 +8,7 @@ import { auth } from "@/auth";
 import { sendEmail } from "@/lib/workflow";
 import { borrowConfirmationEmail, receiptEmail } from "@/lib/email-templates";
 import { createNotification } from "@/lib/notifications";
+import config from "@/lib/config";
 
 export const getBookById = async (bookId: string) => {
   try {
@@ -210,42 +211,44 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
     dueDateTime.setDate(dueDateTime.getDate() + 7);
     const dueDate = dueDateTime.toISOString().slice(0, 10);
 
-    // Database transaction to prevent race conditions
-    const txResult = await db.transaction(async (tx) => {
-      // 1. Check if user already has an active borrow of this book
-      const existingBorrow = await tx
-        .select()
-        .from(borrowRecords)
-        .where(
-          and(
-            eq(borrowRecords.bookId, bookId),
-            eq(borrowRecords.userId, userId),
-            eq(borrowRecords.status, "BORROWED"),
-          ),
-        )
-        .limit(1);
+    // neon-http driver has no interactive transactions, so we rely on guarded
+    // (conditional) updates plus a compensating increment instead.
+    // 1. Check if user already has an active borrow of this book
+    const existingBorrow = await db
+      .select({ id: borrowRecords.id })
+      .from(borrowRecords)
+      .where(
+        and(
+          eq(borrowRecords.bookId, bookId),
+          eq(borrowRecords.userId, userId),
+          eq(borrowRecords.status, "BORROWED"),
+        ),
+      )
+      .limit(1);
 
-      if (existingBorrow.length > 0) {
-        throw new Error("ALREADY_BORROWED");
-      }
+    if (existingBorrow.length > 0) {
+      throw new Error("ALREADY_BORROWED");
+    }
 
-      // 2. Decrement available copies atomically only if availableCopies > 0
-      const updatedBooks = await tx
-        .update(books)
-        .set({
-          availableCopies: sql`${books.availableCopies} - 1`,
-        })
-        .where(and(eq(books.id, bookId), gt(books.availableCopies, 0)))
-        .returning();
+    // 2. Decrement available copies atomically only if availableCopies > 0
+    const updatedBooks = await db
+      .update(books)
+      .set({
+        availableCopies: sql`${books.availableCopies} - 1`,
+      })
+      .where(and(eq(books.id, bookId), gt(books.availableCopies, 0)))
+      .returning();
 
-      if (updatedBooks.length === 0) {
-        throw new Error("OUT_OF_COPIES");
-      }
+    if (updatedBooks.length === 0) {
+      throw new Error("OUT_OF_COPIES");
+    }
 
-      const book = updatedBooks[0];
+    const book = updatedBooks[0];
 
-      // 3. Create borrow record
-      const [borrowRecord] = await tx
+    // 3. Create borrow record, rolling back the decrement if the insert fails
+    let borrowRecord;
+    try {
+      [borrowRecord] = await db
         .insert(borrowRecords)
         .values({
           userId,
@@ -256,11 +259,27 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
           renewCount: 0,
         })
         .returning();
+    } catch (insertError: any) {
+      await db
+        .update(books)
+        .set({ availableCopies: sql`${books.availableCopies} + 1` })
+        .where(eq(books.id, bookId))
+        .catch(() => {});
 
-      return { borrowRecord, book };
-    });
+      // Unique violation from borrow_records_active_user_book_idx (partial
+      // unique index on user_id + book_id where status = 'BORROWED').
+      // drizzle-orm wraps the driver error, so read code/constraint off cause.
+      const pgError = insertError?.cause ?? insertError;
+      if (
+        pgError?.code === "23505" &&
+        (!pgError?.constraint ||
+          pgError.constraint === "borrow_records_active_user_book_idx")
+      ) {
+        throw new Error("ALREADY_BORROWED");
+      }
 
-    const { borrowRecord, book } = txResult;
+      throw insertError;
+    }
 
     if (user.email) {
       const borrowDateStr = new Date().toLocaleDateString("en-US", {
@@ -288,15 +307,13 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
       await sendEmail({
         email: user.email,
         subject: `Your Receipt for ${book.title} is Ready!`,
-        message: receiptEmail(
-          user.fullName,
-          book.title,
-          book.author,
-          book.genre,
-          borrowDateStr,
-          dueDateStr,
-          7,
-        ),
+        message: receiptEmail({
+          fullName: user.fullName,
+          bookTitle: book.title,
+          borrowDate: borrowDateStr,
+          dueDate: dueDateStr,
+          qrUrl: `${config.env.baseUrl}/api/qr/${borrowRecord.id}`,
+        }),
       }).catch(() => {});
 
       // In-App Notification

@@ -1,9 +1,20 @@
 "use server";
 
 import { db } from "@/database/drizzle";
-import { books, borrowRecords, users, reviews } from "@/database/schema";
+import { books, borrowRecords, users, reviews, wishlists } from "@/database/schema";
 import { auth } from "@/auth";
-import { and, asc, desc, eq, ilike, or, sql, count } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  ilike,
+  isNull,
+  or,
+  sql,
+  count,
+} from "drizzle-orm";
 import { sendEmail } from "@/lib/workflow";
 import {
   approvalEmail,
@@ -163,11 +174,11 @@ export const deleteUser = async (userId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Delete borrow records and user in a single transaction
-    await db.transaction(async (tx) => {
-      await tx.delete(borrowRecords).where(eq(borrowRecords.userId, userId));
-      await tx.delete(users).where(eq(users.id, userId));
-    });
+    // neon-http driver has no interactive transactions; batch runs atomically.
+    await db.batch([
+      db.delete(borrowRecords).where(eq(borrowRecords.userId, userId)),
+      db.delete(users).where(eq(users.id, userId)),
+    ]);
 
     return { success: true };
   } catch (error) {
@@ -466,71 +477,112 @@ export const updateBorrowRecordStatus = async ({
       return { success: false, error: "Unauthorized" };
     }
 
-    const updateData: any = { status };
+    const [record] = await db
+      .select()
+      .from(borrowRecords)
+      .where(eq(borrowRecords.id, recordId))
+      .limit(1);
 
-    if (status === "RETURNED") {
-      updateData.returnDate = new Date();
+    if (!record) {
+      return { success: false, error: "Borrow record not found" };
     }
 
-    // Transaction for atomic update of borrow record and book inventory
-    const result = await db.transaction(async (tx) => {
-      const [record] = await tx
-        .select()
-        .from(borrowRecords)
-        .where(eq(borrowRecords.id, recordId))
+    if (record.status === status) {
+      return { success: true };
+    }
+
+    if (status === "RETURNED") {
+      // Flip the status first: the guarded update acts as the mutex, so a
+      // concurrent call can never restock the same book twice.
+      const updated = await db
+        .update(borrowRecords)
+        .set({
+          status: "RETURNED",
+          returnDate: new Date().toISOString().slice(0, 10),
+        })
+        .where(
+          and(
+            eq(borrowRecords.id, recordId),
+            eq(borrowRecords.status, "BORROWED"),
+          ),
+        )
+        .returning({
+          bookId: borrowRecords.bookId,
+          userId: borrowRecords.userId,
+        });
+
+      if (updated.length === 0) {
+        return { success: true };
+      }
+
+      const [book] = await db
+        .update(books)
+        .set({ availableCopies: sql`${books.availableCopies} + 1` })
+        .where(eq(books.id, updated[0].bookId))
+        .returning();
+
+      const [borrower] = await db
+        .select({ email: users.email, fullName: users.fullName })
+        .from(users)
+        .where(eq(users.id, updated[0].userId))
         .limit(1);
 
-      if (!record) {
-        throw new Error("RECORD_NOT_FOUND");
+      if (book && borrower) {
+        await sendEmail({
+          email: borrower.email,
+          subject: `Thank You for Returning ${book.title}!`,
+          message: returnConfirmationEmail(borrower.fullName, book.title),
+        }).catch(() => {});
+
+        await createNotification({
+          userId: updated[0].userId,
+          title: "Book Returned Successfully ✅",
+          message: `Thank you for returning "${book.title}". We hope you enjoyed reading it!`,
+          type: "RETURN",
+          link: "/my-profile",
+        }).catch(() => {});
       }
 
-      await tx
+      return { success: true };
+    }
+
+    // RETURNED -> BORROWED (re-issue): take a copy back out of circulation.
+    const decremented = await db
+      .update(books)
+      .set({ availableCopies: sql`${books.availableCopies} - 1` })
+      .where(and(eq(books.id, record.bookId), gt(books.availableCopies, 0)))
+      .returning({ id: books.id });
+
+    if (decremented.length === 0) {
+      return { success: false, error: "No copies available to re-issue" };
+    }
+
+    try {
+      const reIssued = await db
         .update(borrowRecords)
-        .set(updateData)
-        .where(eq(borrowRecords.id, recordId));
+        .set({ status: "BORROWED", returnDate: null })
+        .where(
+          and(
+            eq(borrowRecords.id, recordId),
+            eq(borrowRecords.status, "RETURNED"),
+          ),
+        )
+        .returning({ id: borrowRecords.id });
 
-      let book = null;
-      let borrower = null;
-
-      // If returning, increment available copies atomically
-      if (status === "RETURNED" && record.status !== "RETURNED") {
-        const [updatedBook] = await tx
+      if (reIssued.length === 0) {
+        // Another call won the race: give the copy back.
+        await db
           .update(books)
           .set({ availableCopies: sql`${books.availableCopies} + 1` })
-          .where(eq(books.id, record.bookId))
-          .returning();
-
-        book = updatedBook;
-
-        const [user] = await tx
-          .select({ email: users.email, fullName: users.fullName })
-          .from(users)
-          .where(eq(users.id, record.userId))
-          .limit(1);
-
-        borrower = user;
+          .where(eq(books.id, record.bookId));
       }
-
-      return { record, book, borrower };
-    });
-
-    if (status === "RETURNED" && result.borrower && result.book) {
-      await sendEmail({
-        email: result.borrower.email,
-        subject: `Thank You for Returning ${result.book.title}!`,
-        message: returnConfirmationEmail(
-          result.borrower.fullName,
-          result.book.title,
-        ),
-      }).catch(() => {});
-
-      await createNotification({
-        userId: result.record.userId,
-        title: "Book Returned Successfully ✅",
-        message: `Thank you for returning "${result.book.title}". We hope you enjoyed reading it!`,
-        type: "RETURN",
-        link: "/my-profile",
-      }).catch(() => {});
+    } catch (error) {
+      await db
+        .update(books)
+        .set({ availableCopies: sql`${books.availableCopies} + 1` })
+        .where(eq(books.id, record.bookId))
+        .catch(() => {});
+      throw error;
     }
 
     return { success: true };
@@ -752,11 +804,11 @@ export const deleteBook = async (bookId: string) => {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Delete borrow records and book in a single transaction
-    await db.transaction(async (tx) => {
-      await tx.delete(borrowRecords).where(eq(borrowRecords.bookId, bookId));
-      await tx.delete(books).where(eq(books.id, bookId));
-    });
+    // neon-http driver has no interactive transactions; batch runs atomically.
+    await db.batch([
+      db.delete(borrowRecords).where(eq(borrowRecords.bookId, bookId)),
+      db.delete(books).where(eq(books.id, bookId)),
+    ]);
 
     return { success: true };
   } catch (error) {
@@ -911,5 +963,83 @@ export const deleteReviewAdmin = async (reviewId: string) => {
   } catch (error) {
     console.error("Error deleting review as admin:", error);
     return { success: false, error: "Failed to delete review" };
+  }
+};
+
+export const confirmBorrowScan = async ({
+  recordId,
+  action,
+}: {
+  recordId: string;
+  action: "CHECK_OUT" | "CHECK_IN";
+}) => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const [record] = await db
+      .select()
+      .from(borrowRecords)
+      .where(eq(borrowRecords.id, recordId))
+      .limit(1);
+
+    if (!record) {
+      return { success: false, error: "Receipt not found" };
+    }
+
+    if (action === "CHECK_OUT") {
+      if (record.status === "RETURNED") {
+        return { success: false, error: "This book has already been returned" };
+      }
+
+      // Guarded update: flipping pickedUpAt from NULL makes repeat scans a no-op.
+      const updated = await db
+        .update(borrowRecords)
+        .set({ pickedUpAt: new Date() })
+        .where(
+          and(
+            eq(borrowRecords.id, recordId),
+            eq(borrowRecords.status, "BORROWED"),
+            isNull(borrowRecords.pickedUpAt),
+          ),
+        )
+        .returning({ id: borrowRecords.id });
+
+      if (updated.length === 0) {
+        return { success: true, message: "This book was already checked out" };
+      }
+
+      return { success: true, message: "Book checked out successfully" };
+    }
+
+    if (record.status === "RETURNED") {
+      return { success: true, message: "This book was already returned" };
+    }
+
+    const result = await updateBorrowRecordStatus({
+      recordId,
+      status: "RETURNED",
+    });
+
+    if (!result.success) {
+      return { success: false, error: "Failed to check in book" };
+    }
+
+    return { success: true, message: "Book checked in successfully" };
+  } catch (error) {
+    console.error("Error confirming scan:", error);
+    return { success: false, error: "Failed to update borrow record" };
   }
 };

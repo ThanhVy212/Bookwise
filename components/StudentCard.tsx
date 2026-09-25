@@ -92,6 +92,7 @@ const StudentCard = ({ user }: StudentCardProps) => {
                     src={user.universityCard}
                     alt="University Card"
                     fill
+                    sizes="(max-width: 640px) 100vw, 550px"
                     className="object-cover rounded-xl"
                   />
                 </div>
@@ -102,6 +103,7 @@ const StudentCard = ({ user }: StudentCardProps) => {
                   src={user.universityCard}
                   alt="University Card"
                   fill
+                  sizes="(max-width: 640px) 100vw, 550px"
                   className="object-cover rounded-xl"
                 />
               </div>

@@ -53,7 +53,7 @@ const Sidebar = ({
                       src={link.img}
                       alt={link.text}
                       fill
-                      className={`${isSelected ? "brightness-0 invert" : ""} object-contain`}
+                      sizes="20px"                      className={`${isSelected ? "brightness-0 invert" : ""} object-contain`}
                     />
                   </div>
 

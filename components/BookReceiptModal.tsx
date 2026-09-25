@@ -127,6 +127,21 @@ const BookReceiptModal = ({
                   {record.status}
                 </span>
               </div>
+
+              <div className="flex flex-col items-center gap-2 pt-3">
+                <div className="rounded-xl bg-white p-3">
+                  <Image
+                    src={`/api/qr/${record.id}`}
+                    alt="Scan this QR code at the library counter"
+                    width={160}
+                    height={160}
+                    unoptimized
+                  />
+                </div>
+                <p className="text-center text-xs leading-relaxed text-light-100/60">
+                  Show this QR code at the counter for fast check-in/check-out.
+                </p>
+              </div>
             </div>
 
             {/* Footer */}

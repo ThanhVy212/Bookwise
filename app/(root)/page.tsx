@@ -9,12 +9,17 @@ import { getUserWishlistBookIds } from "@/lib/actions/book.actions";
 const Home = async () => {
   const session = await auth();
 
-  const [lastestBooks, wishlistResult] = await Promise.all([
+  const [lastestBooks, popularBooks, wishlistResult] = await Promise.all([
     db
       .select()
       .from(books)
       .limit(13)
       .orderBy(desc(books.createdAt)) as Promise<Book[]>,
+    db
+      .select()
+      .from(books)
+      .limit(6)
+      .orderBy(desc(books.rating), desc(books.createdAt)) as Promise<Book[]>,
     session?.user?.id ? getUserWishlistBookIds() : Promise.resolve({ success: true, data: [] as string[] }),
   ]);
 
@@ -42,10 +47,17 @@ const Home = async () => {
       />
 
       <BookList
+        title="Popular Books"
+        books={popularBooks}
+        wishlistBookIds={wishlistBookIds}
+        className="mt-28"
+      />
+
+      <BookList
         title="Latest Books"
         books={lastestBooks.slice(1)}
         wishlistBookIds={wishlistBookIds}
-        className="mt-28"
+        className="mt-24"
       />
     </>
   );

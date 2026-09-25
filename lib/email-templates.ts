@@ -1,4 +1,6 @@
-const BASE_URL = "https://bookwise-three-omega.vercel.app";
+import config from "@/lib/config";
+
+const BASE_URL = config.env.baseUrl;
 
 const baseLayout = (title: string, content: string) => `
 <!DOCTYPE html>
@@ -98,17 +100,33 @@ export const borrowConfirmationEmail = (
     <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:24px 0 0;">Happy reading,<br/>The BookWise Team</p>
   `);
 
-export const receiptEmail = (
-  fullName: string,
-  bookTitle: string,
-  arg3?: string,
-  arg4?: string,
-  borrowDate?: string,
-  dueDate?: string,
-  durationDays?: number,
-) => {
-  const actualBorrowDate = borrowDate || arg3 || "N/A";
-  const actualDueDate = dueDate || arg4 || "N/A";
+export const receiptEmail = ({
+  fullName,
+  bookTitle,
+  borrowDate,
+  dueDate,
+  qrUrl,
+}: {
+  fullName: string;
+  bookTitle: string;
+  borrowDate?: string;
+  dueDate?: string;
+  qrUrl?: string;
+}) => {
+  const actualBorrowDate = borrowDate || "N/A";
+  const actualDueDate = dueDate || "N/A";
+
+  const qrBlock = qrUrl
+    ? `
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:24px 0 4px;">
+      <tr>
+        <td align="center">
+          <img src="${qrUrl}" alt="Scan this QR code at the library counter" width="180" height="180" style="display:block;border:0;border-radius:12px;background-color:#ffffff;padding:12px;" />
+          <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:14px 0 0;text-align:center;">Show this QR code at the counter.<br/>Staff can scan it to check the book out or check it back in.</p>
+        </td>
+      </tr>
+    </table>`
+    : "";
 
   return baseLayout("Book Receipt Generated Email", `
     <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 20px;line-height:1.35;letter-spacing:-0.3px;">Your Receipt for ${bookTitle} is Ready!</h1>
@@ -118,6 +136,7 @@ export const receiptEmail = (
       <li style="margin-bottom:6px;">Borrowed On: <strong style="color:#e7c9a5;">${actualBorrowDate}</strong></li>
       <li>Due Date: <strong style="color:#e7c9a5;">${actualDueDate}</strong></li>
     </ul>
+    ${qrBlock}
     <p style="color:#cbd5e1;font-size:15px;line-height:1.65;margin:0 0 8px;">You can download the receipt here:</p>
     ${button(`${BASE_URL}/my-profile`, "Download Receipt")}
     <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:24px 0 0;">Keep the pages turning,<br/>The BookWise Team</p>

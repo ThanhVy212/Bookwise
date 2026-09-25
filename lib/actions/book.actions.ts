@@ -259,12 +259,25 @@ export const borrowBook = async ({ bookId }: { bookId: string }) => {
           renewCount: 0,
         })
         .returning();
-    } catch (insertError) {
+    } catch (insertError: any) {
       await db
         .update(books)
         .set({ availableCopies: sql`${books.availableCopies} + 1` })
         .where(eq(books.id, bookId))
         .catch(() => {});
+
+      // Unique violation from borrow_records_active_user_book_idx (partial
+      // unique index on user_id + book_id where status = 'BORROWED').
+      // drizzle-orm wraps the driver error, so read code/constraint off cause.
+      const pgError = insertError?.cause ?? insertError;
+      if (
+        pgError?.code === "23505" &&
+        (!pgError?.constraint ||
+          pgError.constraint === "borrow_records_active_user_book_idx")
+      ) {
+        throw new Error("ALREADY_BORROWED");
+      }
+
       throw insertError;
     }
 

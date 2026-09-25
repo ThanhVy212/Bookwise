@@ -36,6 +36,9 @@ const Home = async () => {
     );
   }
 
+  const latestBookIds = new Set(lastestBooks.map((book) => book.id));
+  const uniquePopularBooks = popularBooks.filter((book) => !latestBookIds.has(book.id));
+
   const featuredBook = lastestBooks[0];
 
   return (
@@ -48,7 +51,7 @@ const Home = async () => {
 
       <BookList
         title="Popular Books"
-        books={popularBooks}
+        books={uniquePopularBooks}
         wishlistBookIds={wishlistBookIds}
         className="mt-28"
       />

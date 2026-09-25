@@ -1,39 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { eq } from "drizzle-orm";
+import { Ratelimit } from "@upstash/ratelimit";
 import { db } from "@/database/drizzle";
+import redis from "@/database/redis";
 import { borrowRecords } from "@/database/schema";
+import { auth } from "@/auth";
 import config from "@/lib/config";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
 
-const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
+const ratelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.fixedWindow(RATE_LIMIT_MAX, "1m"),
+  analytics: true,
+  prefix: "@upstash/ratelimit:qr",
+});
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const record = rateLimitStore.get(ip);
+async function getRateLimitKey(): Promise<string> {
+  const session = await auth();
+  if (session?.user?.id) return `user:${session.user.id}`;
 
-  if (!record || now - record.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitStore.set(ip, { count: 1, windowStart: now });
-    return false;
-  }
-
-  record.count++;
-  return record.count > RATE_LIMIT_MAX;
+  // x-forwarded-for is client-controlled unless a trusted proxy sets it, and
+  // no trusted proxy is configured here, so anonymous requests share a bucket.
+  return "anonymous";
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ recordId: string }> },
 ) {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : "unknown";
+  const { success } = await ratelimit.limit(await getRateLimitKey());
 
-  if (isRateLimited(ip)) {
+  if (!success) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
       { status: 429 },

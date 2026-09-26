@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { Ratelimit } from "@upstash/ratelimit";
 import { db } from "@/database/drizzle";
 import redis from "@/database/redis";
-import { borrowRecords } from "@/database/schema";
+import { borrowRecords, users } from "@/database/schema";
 import { auth } from "@/auth";
 import config from "@/lib/config";
 
@@ -20,20 +20,17 @@ const ratelimit = new Ratelimit({
   prefix: "@upstash/ratelimit:qr",
 });
 
-async function getRateLimitKey(): Promise<string> {
-  const session = await auth();
-  if (session?.user?.id) return `user:${session.user.id}`;
-
-  // x-forwarded-for is client-controlled unless a trusted proxy sets it, and
-  // no trusted proxy is configured here, so anonymous requests share a bucket.
-  return "anonymous";
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ recordId: string }> },
 ) {
-  const { success } = await ratelimit.limit(await getRateLimitKey());
+  const session = await auth();
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { success } = await ratelimit.limit(`user:${session.user.id}`);
 
   if (!success) {
     return NextResponse.json(
@@ -50,13 +47,25 @@ export async function GET(
 
   try {
     const [record] = await db
-      .select({ id: borrowRecords.id })
+      .select({ id: borrowRecords.id, userId: borrowRecords.userId })
       .from(borrowRecords)
       .where(eq(borrowRecords.id, recordId))
       .limit(1);
 
     if (!record) {
       return NextResponse.json({ error: "Receipt not found." }, { status: 404 });
+    }
+
+    if (record.userId !== session.user.id) {
+      const [actingUser] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1);
+
+      if (actingUser?.role !== "ADMIN") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     const scanUrl = `${config.env.baseUrl}/scan/${record.id}`;
@@ -72,7 +81,7 @@ export async function GET(
     return new NextResponse(Buffer.from(base64, "base64"), {
       headers: {
         "content-type": "image/png",
-        "cache-control": "public, max-age=86400",
+        "cache-control": "private, max-age=86400",
       },
     });
   } catch (error) {

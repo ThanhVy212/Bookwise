@@ -148,6 +148,30 @@ export const updateUserRole = async ({
       return { success: false, error: "Unauthorized" };
     }
 
+    const [target] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!target) {
+      return { success: false, error: "User not found" };
+    }
+
+    if (target.role === "ADMIN" && role === "USER") {
+      const [{ adminCount }] = await db
+        .select({ adminCount: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.role, "ADMIN"));
+
+      if (Number(adminCount) <= 1) {
+        return {
+          success: false,
+          error: "Cannot demote the last remaining admin",
+        };
+      }
+    }
+
     await db.update(users).set({ role }).where(eq(users.id, userId));
 
     return { success: true };
@@ -172,6 +196,30 @@ export const deleteUser = async (userId: string) => {
 
     if (actingUser?.role !== "ADMIN") {
       return { success: false, error: "Unauthorized" };
+    }
+
+    const [target] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!target) {
+      return { success: false, error: "User not found" };
+    }
+
+    if (target.role === "ADMIN") {
+      const [{ adminCount }] = await db
+        .select({ adminCount: sql<number>`count(*)` })
+        .from(users)
+        .where(eq(users.role, "ADMIN"));
+
+      if (Number(adminCount) <= 1) {
+        return {
+          success: false,
+          error: "Cannot delete the last remaining admin",
+        };
+      }
     }
 
     // neon-http driver has no interactive transactions; batch runs atomically.

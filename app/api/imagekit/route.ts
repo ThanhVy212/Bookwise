@@ -1,6 +1,10 @@
 import ImageKit from "@imagekit/nodejs";
 import config from "@/lib/config";
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { db } from "@/database/drizzle";
+import { users } from "@/database/schema";
+import { eq } from "drizzle-orm";
 
 const imageKit = new ImageKit({
   privateKey: config.env.imagekit.privateKey,
@@ -13,6 +17,10 @@ const ALLOWED_FOLDERS = [
   "books",
   "avatars",
 ];
+const ADMIN_ONLY_FOLDERS = ["books/covers", "books/videos", "books"];
+// Sign-up runs before a session exists, so this folder stays public
+// (still covered by the IP rate limit below).
+const PUBLIC_FOLDERS = ["university-cards"];
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const ALLOWED_MIME_PREFIXES = ["image/", "video/"];
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -45,6 +53,7 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function GET(request: Request) {
+  const session = await auth();
   const ip = getClientIp(request);
 
   if (isRateLimited(ip)) {
@@ -62,6 +71,22 @@ export async function GET(request: Request) {
       { error: "Invalid or missing folder parameter." },
       { status: 400 },
     );
+  }
+
+  if (!session?.user?.id && !PUBLIC_FOLDERS.includes(folder)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (session?.user?.id && ADMIN_ONLY_FOLDERS.includes(folder)) {
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   try {

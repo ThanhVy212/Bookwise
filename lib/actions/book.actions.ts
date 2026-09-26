@@ -38,6 +38,21 @@ export const getBookById = async (bookId: string) => {
 
 export const createBook = async (params: BookFormValues) => {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, message: "Unauthorized" };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, message: "Unauthorized" };
+    }
+
     const newBook = await db
       .insert(books)
       .values({
@@ -361,10 +376,17 @@ export const getUserBorrowedBooks = async (userId: string) => {
     }
 
     const isOwnRecords = session.user.id === userId;
-    const isAdmin = (session.user as any).role === "ADMIN";
 
-    if (!isOwnRecords && !isAdmin) {
-      return { success: false, error: "Forbidden", data: [] };
+    if (!isOwnRecords) {
+      const [actingUser] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1);
+
+      if (actingUser?.role !== "ADMIN") {
+        return { success: false, error: "Forbidden", data: [] };
+      }
     }
 
     const records = await db
@@ -732,6 +754,23 @@ export const addOrUpdateReview = async ({
     }
 
     const userId = session.user.id;
+
+    const [user] = await db
+      .select({ status: users.status })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    if (user.status !== "APPROVED") {
+      return {
+        success: false,
+        error: "Your account must be approved by an admin before writing reviews.",
+      };
+    }
 
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
       return { success: false, error: "Rating must be an integer between 1 and 5" };

@@ -121,10 +121,17 @@ export const getUserById = async (userId: string) => {
     }
 
     const isOwnProfile = session.user.id === userId;
-    const isAdmin = (session.user as any).role === "ADMIN";
 
-    if (!isOwnProfile && !isAdmin) {
-      return { success: false, error: "Forbidden" };
+    if (!isOwnProfile) {
+      const [actingUser] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1);
+
+      if (actingUser?.role !== "ADMIN") {
+        return { success: false, error: "Forbidden" };
+      }
     }
 
     const user = await db

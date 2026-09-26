@@ -22,7 +22,7 @@ const BorrowRequestsPage = async ({
 
   if (!result.success) {
     return (
-      <section className="w-full rounded-2xl bg-white p-7 shadow-2xs">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
         <p className="text-red-500">Failed to load borrow records</p>
       </section>
     );
@@ -32,8 +32,8 @@ const BorrowRequestsPage = async ({
   const nextSort = sort === "oldest" ? "newest" : "oldest";
 
   return (
-    <section className="w-full rounded-2xl bg-white p-7 shadow-2xs">
-      <div className="flex items-center justify-between">
+    <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-dark-400">Borrow Book Requests</h2>
         <Link
           href={`/admin/book-requests?sort=${nextSort}&page=1${query ? `&query=${query}` : ""}`}
@@ -218,6 +218,10 @@ const BorrowRequestsPage = async ({
           </tbody>
         </table>
       </div>
+
+      <p className="mt-3 text-[11px] text-slate-400 md:hidden">
+        Scroll horizontally to see all columns
+      </p>
 
       {records.length === 0 && (
         <div className="mt-10 flex flex-col items-center justify-center py-16">

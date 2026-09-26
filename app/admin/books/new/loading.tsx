@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const AdminBookNewLoading = () => {
   return (
-    <section className="w-full rounded-2xl bg-white p-7">
+    <section className="w-full rounded-2xl bg-white p-4 sm:p-7">
       <Skeleton className="h-6 w-48 rounded mb-8" />
       <div className="space-y-6">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

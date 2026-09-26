@@ -22,7 +22,7 @@ const BooksPage = async ({
 
   if (!result.success) {
     return (
-      <section className="w-full rounded-2xl bg-white p-7 shadow-xs">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-xs">
         <p className="text-red-500">Failed to load books</p>
       </section>
     );
@@ -31,7 +31,7 @@ const BooksPage = async ({
   const { books, totalBooks, totalPages, currentPage } = result.data;
 
   return (
-    <section className="w-full rounded-2xl bg-white p-7 shadow-xs">
+    <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-xs">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-dark-400">All Books</h2>
@@ -40,10 +40,10 @@ const BooksPage = async ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
           <AdminSearch
             placeholder="Search by title, author, genre..."
-            className="w-64 lg:w-80"
+            className="w-full sm:w-64 lg:w-80"
           />
 
           <Button className="admin-btn" asChild>
@@ -162,6 +162,10 @@ const BooksPage = async ({
           </tbody>
         </table>
       </div>
+
+      <p className="mt-3 text-[11px] text-slate-400 md:hidden">
+        Scroll horizontally to see all columns
+      </p>
 
       {totalPages > 1 && (
         <div className="mt-7 flex items-center justify-end gap-2">

@@ -3,23 +3,18 @@ import BookList from "@/components/BookList";
 import { auth } from "@/auth";
 import { db } from "@/database/drizzle";
 import { books } from "@/database/schema";
-import { desc } from "drizzle-orm";
+import { desc, inArray, ne, not } from "drizzle-orm";
 import { getUserWishlistBookIds } from "@/lib/actions/book.actions";
 
 const Home = async () => {
   const session = await auth();
 
-  const [lastestBooks, popularBooks, wishlistResult] = await Promise.all([
+  const [lastestBooks, wishlistResult] = await Promise.all([
     db
       .select()
       .from(books)
       .limit(13)
       .orderBy(desc(books.createdAt)) as Promise<Book[]>,
-    db
-      .select()
-      .from(books)
-      .limit(6)
-      .orderBy(desc(books.rating), desc(books.createdAt)) as Promise<Book[]>,
     session?.user?.id ? getUserWishlistBookIds() : Promise.resolve({ success: true, data: [] as string[] }),
   ]);
 
@@ -36,10 +31,24 @@ const Home = async () => {
     );
   }
 
-  const latestBookIds = new Set(lastestBooks.map((book) => book.id));
-  const uniquePopularBooks = popularBooks.filter((book) => !latestBookIds.has(book.id));
-
   const featuredBook = lastestBooks[0];
+  const latestBookIds = lastestBooks.map((book) => book.id);
+
+  let popularBooks = (await db
+    .select()
+    .from(books)
+    .where(not(inArray(books.id, latestBookIds)))
+    .limit(6)
+    .orderBy(desc(books.rating), desc(books.createdAt))) as Book[];
+
+  if (popularBooks.length === 0) {
+    popularBooks = (await db
+      .select()
+      .from(books)
+      .where(ne(books.id, featuredBook.id))
+      .limit(6)
+      .orderBy(desc(books.rating), desc(books.createdAt))) as Book[];
+  }
 
   return (
     <>
@@ -51,7 +60,7 @@ const Home = async () => {
 
       <BookList
         title="Popular Books"
-        books={uniquePopularBooks}
+        books={popularBooks}
         wishlistBookIds={wishlistBookIds}
         className="mt-28"
       />

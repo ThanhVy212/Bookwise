@@ -1,9 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import Image from "next/image";
+import React, { useState, useRef, useEffect } from "react";
 import { Play } from "lucide-react";
-import { ImageKitProvider, Video as ImageKitVideo } from "@imagekit/next";
 import config from "@/lib/config";
 
 interface BookVideoProps {
@@ -16,6 +14,11 @@ const BookVideo = ({ videoUrl, coverUrl }: BookVideoProps) => {
   const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  useEffect(() => {
+    setHasError(false);
+    setIsPlaying(false);
+  }, [videoUrl]);
+
   if (!videoUrl) {
     return (
       <div className="flex h-64 w-full items-center justify-center rounded-2xl bg-dark-300 text-light-100">
@@ -27,9 +30,14 @@ const BookVideo = ({ videoUrl, coverUrl }: BookVideoProps) => {
   const isImageKitPath = (url?: string) =>
     url ? url.startsWith("/") && !url.startsWith("/sample-video") : false;
 
+  const withOriginalEncoding = (url: string) =>
+    url.includes("tr=") ? url : `${url}${url.includes("?") ? "&" : "?"}tr=orig`;
+
   const fullVideoSrc = isImageKitPath(videoUrl)
-    ? `${config.env.imagekit.urlEndpoint}${videoUrl}`
-    : videoUrl;
+    ? withOriginalEncoding(`${config.env.imagekit.urlEndpoint}${videoUrl}`)
+    : videoUrl.startsWith("http") && videoUrl.includes("ik.imagekit.io")
+      ? withOriginalEncoding(videoUrl)
+      : videoUrl;
 
   const posterSrc = coverUrl
     ? coverUrl.startsWith("http")
@@ -74,7 +82,7 @@ const BookVideo = ({ videoUrl, coverUrl }: BookVideoProps) => {
         />
       )}
 
-      {!isPlaying && (
+      {!isPlaying && !hasError && (
         <button
           type="button"
           onClick={handlePlay}

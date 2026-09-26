@@ -110,7 +110,7 @@ const SendNotificationForm = ({ usersList }: SendNotificationFormProps) => {
           <label className="block text-sm font-semibold text-dark-400 mb-2">
             Target Audience
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <button
               type="button"
               onClick={() => setRecipientType("ALL")}

@@ -26,7 +26,7 @@ const AdminReviewsPage = async ({
 
   if (!result.success) {
     return (
-      <section className="w-full rounded-2xl bg-white p-7 shadow-2xs">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
         <p className="text-red-500">Failed to load reviews</p>
       </section>
     );
@@ -35,7 +35,7 @@ const AdminReviewsPage = async ({
   const { reviews, totalReviews, totalPages, currentPage } = result.data;
 
   return (
-    <section className="w-full rounded-2xl bg-white p-7 shadow-2xs">
+    <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-dark-400">Community Reviews & Ratings</h2>
@@ -213,6 +213,10 @@ const AdminReviewsPage = async ({
           </tbody>
         </table>
       </div>
+
+      <p className="mt-3 text-[11px] text-slate-400 md:hidden">
+        Scroll horizontally to see all columns
+      </p>
 
       {reviews.length === 0 && (
         <div className="mt-10 flex flex-col items-center justify-center py-16">

@@ -135,7 +135,7 @@ const NotificationDropdown = ({ variant = "dark" }: NotificationDropdownProps) =
   };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative shrink-0" ref={dropdownRef}>
       {/* Bell Button */}
       <button
         type="button"

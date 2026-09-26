@@ -26,14 +26,14 @@ const AdminNotificationsPage = async () => {
   return (
     <div className="space-y-8">
       {/* Top Card: Push Notification Form */}
-      <section className="w-full rounded-2xl bg-white p-7 shadow-2xs">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-primary-admin">
               <Radio className="size-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-dark-400">
+              <h2 className="text-lg font-bold text-dark-400 sm:text-xl">
                 Push Custom Notification
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -47,14 +47,14 @@ const AdminNotificationsPage = async () => {
       </section>
 
       {/* Bottom Card: History of Sent Notifications */}
-      <section className="w-full rounded-2xl bg-white p-7 shadow-2xs">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
               <Bell className="size-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-dark-400">
+              <h3 className="text-base font-bold text-dark-400 sm:text-lg">
                 Recently Dispatched Notifications
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -163,6 +163,10 @@ const AdminNotificationsPage = async () => {
             </tbody>
           </table>
         </div>
+
+        <p className="mt-3 text-[11px] text-slate-400 md:hidden">
+          Scroll horizontally to see all columns
+        </p>
 
         {sentNotifications.length === 0 && (
           <div className="mt-8 flex flex-col items-center justify-center py-12">

@@ -39,7 +39,7 @@ const AdminBookDetailsPage = async ({
         Go back
       </Link>
 
-      <section className="w-full rounded-2xl bg-white p-7 sm:p-10 shadow-2xs">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7 lg:p-10 shadow-2xs">
         {/* Top Section: Cover + Book Info */}
         <div className="flex flex-col gap-8 md:flex-row md:items-center">
           {/* Book Cover on Colored Background */}

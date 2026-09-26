@@ -7,7 +7,7 @@
 @layer components {
     /* Admin layout */
     .admin-container {
-        @apply flex w-[calc(100%_-_264px)] flex-1 flex-col bg-light-300 p-5 xs:p-10;
+        @apply flex w-full flex-1 flex-col bg-light-300 p-4 sm:p-6 md:w-[calc(100%_-_264px)] lg:p-10;
     }
 
     .back-btn {
@@ -158,7 +158,7 @@
 
     /* Sidebar */
     .admin-sidebar {
-        @apply sticky left-0 top-0 flex h-dvh flex-col justify-between bg-white px-5 pb-5 pt-10;
+        @apply sticky left-0 top-0 hidden h-dvh w-[264px] shrink-0 flex-col justify-between overflow-y-auto bg-white px-5 pb-5 pt-10 md:flex;
     }
 
     .admin-sidebar .logo {
@@ -178,7 +178,7 @@
     }
 
     .admin-sidebar .user {
-        @apply my-8 flex w-full flex-row gap-2 rounded-full border border-light-400 px-6 py-2 shadow-sm max-md:px-2;
+        @apply mb-4 flex w-full flex-row gap-2 rounded-full border border-light-400 px-6 py-2 shadow-sm;
     }
 
     /* User card */

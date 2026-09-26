@@ -18,7 +18,7 @@ const UsersPage = async ({
 
   if (!result.success) {
     return (
-      <section className="w-full rounded-2xl bg-white p-7">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7">
         <p className="text-red-500">Failed to load users</p>
       </section>
     );
@@ -27,8 +27,8 @@ const UsersPage = async ({
   const { users, totalUsers, totalPages, currentPage } = result.data;
 
   return (
-    <section className="w-full rounded-2xl bg-white p-7">
-      <div className="flex items-center justify-between">
+    <section className="w-full rounded-2xl bg-white p-4 sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">All Users</h2>
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500">A-Z</span>
@@ -128,6 +128,10 @@ const UsersPage = async ({
           </tbody>
         </table>
       </div>
+
+      <p className="mt-3 text-[11px] text-slate-400 md:hidden">
+        Scroll horizontally to see all columns
+      </p>
 
       {totalPages > 1 && (
         <div className="mt-7 flex items-center justify-end gap-2">

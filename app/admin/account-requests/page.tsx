@@ -10,7 +10,7 @@ const AccountRequestsPage = async () => {
 
   if (!result.success) {
     return (
-      <section className="w-full rounded-2xl bg-white p-7">
+      <section className="w-full rounded-2xl bg-white p-4 sm:p-7">
         <p className="text-red-500">Failed to load account requests</p>
       </section>
     );
@@ -19,8 +19,8 @@ const AccountRequestsPage = async () => {
   const requests = result.data;
 
   return (
-    <section className="w-full rounded-2xl bg-white p-7">
-      <div className="flex items-center justify-between">
+    <section className="w-full rounded-2xl bg-white p-4 sm:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Account Registration Requests</h2>
         <div className="flex items-center gap-2">
           <span className="text-sm text-slate-500">Oldest to Recent</span>
@@ -104,6 +104,10 @@ const AccountRequestsPage = async () => {
           </tbody>
         </table>
       </div>
+
+      <p className="mt-3 text-[11px] text-slate-400 md:hidden">
+        Scroll horizontally to see all columns
+      </p>
 
       {requests.length === 0 && (
         <div className="mt-10 flex flex-col items-center justify-center py-16">

@@ -193,5 +193,5 @@ BookWise includes an automated overdue scanner that scans for overdue active bor
   ```
 ---
 <div align="center">
-  <sub>Built with ❤️ for passionate readers and modern academic libraries.</sub>
+  <sub>Built with ❤️ for passionate readers and modern academic libraries</sub>
 </div>

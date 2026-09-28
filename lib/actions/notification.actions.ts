@@ -1,9 +1,9 @@
 "use server";
 
 import { db } from "@/database/drizzle";
-import { notifications, users } from "@/database/schema";
+import { notifications, users, borrowRecords, books } from "@/database/schema";
 import { auth } from "@/auth";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { emitSocketNotification } from "@/lib/socket-server";
 import { isSafeNotificationLink } from "@/lib/notifications";
 
@@ -238,3 +238,108 @@ export const getSentNotificationsAdmin = async ({
     return { success: false, data: [] };
   }
 };
+
+export const getOverdueStatsAdmin = async () => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: "Unauthorized", totalOverdue: 0, overdueRecords: [] };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return { success: false, error: "Unauthorized", totalOverdue: 0, overdueRecords: [] };
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const overdueList = await db
+      .select({
+        recordId: borrowRecords.id,
+        borrowDate: borrowRecords.borrowDate,
+        dueDate: borrowRecords.dueDate,
+        userId: users.id,
+        userName: users.fullName,
+        userEmail: users.email,
+        bookId: books.id,
+        bookTitle: books.title,
+      })
+      .from(borrowRecords)
+      .innerJoin(users, eq(borrowRecords.userId, users.id))
+      .innerJoin(books, eq(borrowRecords.bookId, books.id))
+      .where(
+        and(
+          eq(borrowRecords.status, "BORROWED"),
+          lt(borrowRecords.dueDate, todayStr),
+        ),
+      );
+
+    return {
+      success: true,
+      totalOverdue: overdueList.length,
+      overdueRecords: JSON.parse(JSON.stringify(overdueList)),
+    };
+  } catch (error) {
+    console.error("Error fetching overdue stats admin:", error);
+    return { success: false, error: "Failed to fetch overdue stats", totalOverdue: 0, overdueRecords: [] };
+  }
+};
+
+export const triggerOverdueScanAdmin = async ({
+  force = false,
+}: { force?: boolean } = {}): Promise<import("@/lib/overdue").OverdueProcessResult> => {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return {
+        success: false,
+        error: "Unauthorized",
+        totalOverdue: 0,
+        notifiedCount: 0,
+        skippedCount: 0,
+        errorCount: 1,
+        details: [],
+      };
+    }
+
+    const [actingUser] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1);
+
+    if (actingUser?.role !== "ADMIN") {
+      return {
+        success: false,
+        error: "Unauthorized",
+        totalOverdue: 0,
+        notifiedCount: 0,
+        skippedCount: 0,
+        errorCount: 1,
+        details: [],
+      };
+    }
+
+    const { checkAndNotifyOverdueBorrows } = await import("@/lib/overdue");
+    const result = await checkAndNotifyOverdueBorrows({ force });
+
+    return result;
+  } catch (error: any) {
+    console.error("Error in triggerOverdueScanAdmin:", error);
+    return {
+      success: false,
+      error: error?.message || "Failed to trigger overdue scan",
+      totalOverdue: 0,
+      notifiedCount: 0,
+      skippedCount: 0,
+      errorCount: 1,
+      details: [],
+    };
+  }
+};
+

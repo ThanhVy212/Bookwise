@@ -197,3 +197,50 @@ export const milestoneEmail = (fullName: string) =>
     ${button(`${BASE_URL}/`, "Discover New Reads")}
     <p style="color:#cbd5e1;font-size:15px;line-height:1.6;margin:24px 0 0;">Keep the pages turning,<br/>The BookWise Team</p>
   `);
+
+export const overdueNoticeEmail = ({
+  fullName,
+  bookTitle,
+  borrowDate,
+  dueDate,
+  overdueDays,
+  estimatedFine,
+}: {
+  fullName: string;
+  bookTitle: string;
+  borrowDate?: string;
+  dueDate: string;
+  overdueDays: number;
+  estimatedFine?: number;
+}) => {
+  const fineFormatted =
+    estimatedFine !== undefined
+      ? `${estimatedFine.toLocaleString("vi-VN")} VND`
+      : `${(overdueDays * 5000).toLocaleString("vi-VN")} VND`;
+
+  return baseLayout("Overdue Book Notice", `
+    <div style="background-color:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);border-radius:8px;padding:12px 16px;margin-bottom:20px;">
+      <p style="color:#fb7185;font-size:14px;font-weight:600;margin:0;">⚠️ URGENT: Book Return Overdue</p>
+    </div>
+    <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0 0 20px;line-height:1.35;letter-spacing:-0.3px;">Notice: "${bookTitle}" is Overdue</h1>
+    <p style="color:#cbd5e1;font-size:15px;line-height:1.65;margin:0 0 16px;">Hi ${fullName},</p>
+    <p style="color:#cbd5e1;font-size:15px;line-height:1.65;margin:0 0 16px;">Our records indicate that the book <strong style="color:#ffffff;">"${bookTitle}"</strong> was due for return on <strong style="color:#fb7185;">${dueDate}</strong> and is currently overdue.</p>
+    
+    <div style="background-color:#161d2f;border:1px solid #243048;border-radius:8px;padding:16px 20px;margin:20px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;color:#cbd5e1;line-height:1.8;">
+        ${borrowDate ? `<tr><td style="color:#94a3b8;padding-bottom:6px;">Borrowed On:</td><td align="right" style="color:#ffffff;font-weight:600;padding-bottom:6px;">${borrowDate}</td></tr>` : ""}
+        <tr><td style="color:#94a3b8;padding-bottom:6px;">Due Date:</td><td align="right" style="color:#fb7185;font-weight:600;padding-bottom:6px;">${dueDate}</td></tr>
+        <tr><td style="color:#94a3b8;padding-bottom:6px;">Days Overdue:</td><td align="right" style="color:#fb7185;font-weight:700;padding-bottom:6px;">${overdueDays} ${overdueDays === 1 ? "day" : "days"}</td></tr>
+        <tr><td style="color:#94a3b8;border-top:1px solid #243048;padding-top:8px;">Estimated Late Fine:</td><td align="right" style="color:#e7c9a5;font-weight:700;border-top:1px solid #243048;padding-top:8px;">${fineFormatted}</td></tr>
+      </table>
+    </div>
+
+    <p style="color:#cbd5e1;font-size:15px;line-height:1.65;margin:0 0 16px;">Please return the book to the library desk as soon as possible to avoid accumulating additional late penalty fees (5,000 VND/day) and preserve your borrowing privileges.</p>
+    
+    <p style="color:#cbd5e1;font-size:15px;line-height:1.65;margin:0 0 8px;">Check your borrowing details here:</p>
+    ${button(`${BASE_URL}/my-profile`, "View Borrowed Books")}
+    
+    <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:24px 0 0;">If you have already returned this book, please disregard this notice or contact the library front desk.<br/><br/>Best regards,<br/>The BookWise Team</p>
+  `);
+};
+

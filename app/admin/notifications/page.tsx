@@ -2,13 +2,17 @@ import React from "react";
 import Image from "next/image";
 import { db } from "@/database/drizzle";
 import { users } from "@/database/schema";
-import { getSentNotificationsAdmin } from "@/lib/actions/notification.actions";
+import {
+  getSentNotificationsAdmin,
+  getOverdueStatsAdmin,
+} from "@/lib/actions/notification.actions";
 import { getInitials, getImageKitUrl } from "@/lib/utils";
 import SendNotificationForm from "@/components/admin/SendNotificationForm";
+import OverdueScannerCard from "@/components/admin/OverdueScannerCard";
 import { Bell, Radio, CheckCheck } from "lucide-react";
 
 const AdminNotificationsPage = async () => {
-  const [usersList, sentResult] = await Promise.all([
+  const [usersList, sentResult, overdueResult] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -19,12 +23,21 @@ const AdminNotificationsPage = async () => {
       .from(users)
       .orderBy(users.fullName),
     getSentNotificationsAdmin({ limit: 15 }),
+    getOverdueStatsAdmin(),
   ]);
 
   const sentNotifications = sentResult.success ? sentResult.data : [];
+  const totalOverdue = overdueResult.success ? overdueResult.totalOverdue : 0;
+  const overdueRecords = overdueResult.success ? overdueResult.overdueRecords : [];
 
   return (
     <div className="space-y-8">
+      {/* Overdue Notification & Auto Scanner Card */}
+      <OverdueScannerCard
+        initialTotalOverdue={totalOverdue}
+        initialOverdueRecords={overdueRecords}
+      />
+
       {/* Top Card: Push Notification Form */}
       <section className="w-full rounded-2xl bg-white p-4 sm:p-7 shadow-2xs">
         <div className="flex items-center justify-between border-b border-slate-100 pb-5 mb-6">
@@ -146,7 +159,9 @@ const AdminNotificationsPage = async () => {
                   <td className="py-4 text-right text-xs text-slate-400">
                     <div className="flex items-center justify-end gap-1">
                       {n.isRead && (
-                        <CheckCheck className="size-3.5 text-blue-500" title="Read by user" />
+                        <span title="Read by user">
+                          <CheckCheck className="size-3.5 text-blue-500" />
+                        </span>
                       )}
                       <span>
                         {new Date(n.createdAt).toLocaleDateString("en-US", {
